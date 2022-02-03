@@ -20,6 +20,9 @@ export default {
       this_month: "",
       myChart: null,
       countries: [
+        "buy",
+        "sell",
+        "profits",
         'buy_total',//进货成本
         'sell_total',//售价
         'profits_total'//利润
@@ -41,7 +44,7 @@ export default {
         if (code) {
           this.months = res
           if (this.months.indexOf(this.this_month) < 0) {
-            this.this_month = this.months[0]
+            this.this_month = this.months[this.months.length-1]
           }
           if (typeof (callback) == "function") {
             callback()
@@ -50,6 +53,7 @@ export default {
       })
     },
     f_refush_trend() {
+      const that=this
       this.f_query("/py/get_data", (code, res) => {
         if (code) {
           const datasetWithFilters = [];
@@ -77,21 +81,7 @@ export default {
               name: country,
               endLabel: {
                 show: true,
-                formatter: function (params) {
-                  var name = ""
-                  switch (params.value[1]) {
-                    case 'buy_total':
-                      name = "进货成本"
-                      break;
-                    case 'sell_total':
-                      name = "销售额"
-                      break;
-                    case 'profits_total':
-                      name = "利润"
-                      break;
-                  }
-                  return name + ':' + params.value[2];
-                }
+                formatter: params=>false==params.value[1].endsWith("_total")?"":(that.f_line_type_to_cn(params.value[1]) + ':' + params.value[2])
               },
               labelLayout: {
                 moveOverlap: 'shiftY'
@@ -122,7 +112,8 @@ export default {
             },
             tooltip: {
               order: 'valueDesc',
-              trigger: 'axis'
+              trigger: 'axis',
+              formatter:p1=>p1.filter(p=>false==p.data[1].endsWith("_total")).map(p=>p.data.map(col=>this.f_line_type_to_cn(col)).join(",")).join("<br>")
             },
             xAxis: {
               type: 'category',
@@ -134,6 +125,16 @@ export default {
             grid: {
               right: 140
             },
+            legend:{
+              data:that.countries,
+              bottom:0,
+              selected:{
+                "buy":false,
+                "sell":false,
+                "profits":false
+              },
+              formatter:name=>this.f_line_type_to_cn(name)
+            },
             series: seriesList
           };
           this.myChart.clear()
@@ -141,40 +142,74 @@ export default {
         }
       }, {month: this.this_month})
     },
+    f_line_type_to_cn(line_type){
+      switch (line_type) {
+        case 'buy':
+          line_type = "当天进货成本"
+          break;
+        case 'sell':
+          line_type = "当天销售额"
+          break;
+        case 'profits':
+          line_type = "当天利润"
+          break;
+        case 'buy_total':
+          line_type = "增量进货成本"
+          break;
+        case 'sell_total':
+          line_type = "增量销售额"
+          break;
+        case 'profits_total':
+          line_type = "增量利润"
+          break;
+        }
+        return line_type
+    },
     f_get_parse_data(data_str) {//[名称,时间,成本,卖出价格]
       const parse_arr = [["time", "Country", "val"]]
       try {
-        //格式化数据，过滤表头
-        var sort_arr = data_str.trim().split("\n").map(line => line.split(",")).filter((r, i) => i > 0)
+        //格式化数据[day,buy,sell,profits,buy_add,sell_add,profits_add]，过滤表头
+        var sort_arr = data_str.trim().split("\n").map(line => (line+",,,,").split(",").splice(1)).filter((r, i) => i > 0)
         //补齐当月空数据日
         const month_days = []
         var day = this.this_month.substr(0, 4) + "-" + this.this_month.substr(-2) + "-01"
         while (day.replace(/-/g, "").startsWith(this.this_month)) {
-          month_days.push(["", day.replace(/-/g, "/"), 0, 0])
+          month_days.push([day.replace(/-/g, "/"), 0, 0,0,0,0,0])
           day = new Date(new Date(day).getTime() + 24 * 60 * 60 * 1000).toJSON().split("T")[0]
         }
         //排序
         sort_arr = sort_arr.concat(month_days).sort((a, b) => {
-          return a[1].replace(/\//g, "") - b[1].replace(/\//g, "")
+          return a[0].replace(/\//g, "") - b[0].replace(/\//g, "")
         })
 
-        //合并相同日期的金额
+        //合并相同日期的金额[day,buy,sell,profits,buy_add,sell_add,profits_add]
         for (var i = sort_arr.length - 2; i >= 0; i--) {
-          if (sort_arr[i][1] == sort_arr[i + 1][1]) {
-            sort_arr[i][2] = parseFloat(sort_arr[i][2]) + parseFloat(sort_arr[i + 1][2])
-            sort_arr[i][3] = parseFloat(sort_arr[i][3]) + parseFloat(sort_arr[i + 1][3])
+          const day=sort_arr[i][0]
+          const day1=sort_arr[i + 1][0]
+          const buy=parseFloat(sort_arr[i][1])
+          const sell=parseFloat(sort_arr[i][2])
+          const profits=(sell>0?sell-buy:0)
+          if (day == day1) {
+            sort_arr[i][1] = buy + parseFloat(sort_arr[i + 1][1])
+            sort_arr[i][2] = sell + parseFloat(sort_arr[i + 1][2])
+            sort_arr[i].splice(3,1,profits+parseFloat("0"+sort_arr[i+1][3]))
             sort_arr.splice(i + 1, 1)
           }
         }
         console.info("sort_arr", sort_arr)
-        //每日金额统计累加
+        // 计算增量曲线
         sort_arr.map((line_arr, i) => {
-          const day = line_arr[1]
-          const buy = parseFloat(line_arr[2])
-          const sell = parseFloat(line_arr[3])
-          parse_arr.push([day, this.countries[0], i == 0 ? buy : parse_arr[i * 3 - 2][2] + buy])
-          parse_arr.push([day, this.countries[1], i == 0 ? sell : parse_arr[i * 3 - 1][2] + sell])
-          parse_arr.push([day, this.countries[2], i == 0 ? (sell > 0 ? sell - buy : 0) : (parse_arr[i * 3][2] + (sell - buy))])
+          const day = line_arr[0]
+          const buy = parseFloat(line_arr[1])
+          const sell = parseFloat(line_arr[2])
+          const profits=parseFloat(line_arr[3])
+          parse_arr.push([day, this.countries[0],buy])
+          parse_arr.push([day, this.countries[1],sell])
+          parse_arr.push([day, this.countries[2], profits])
+
+          parse_arr.push([day, this.countries[3], i == 0 ? buy : parse_arr[i * 6 - 2][2] + buy])
+          parse_arr.push([day, this.countries[4], i == 0 ? sell : parse_arr[i * 6 -1][2] + sell])
+          parse_arr.push([day, this.countries[5], i == 0 ? profits : (parse_arr[i * 6][2]+profits)])
         })
         console.info("parse_arr", parse_arr)
         return parse_arr

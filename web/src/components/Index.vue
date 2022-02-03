@@ -64,7 +64,7 @@ export default {
         if (code) {
           this.months = res
           if (this.months.indexOf(this.this_month) < 0) {
-            this.this_month = this.months[0]
+            this.this_month = this.months[this.months.length-1]
           }
           if (typeof (callback) == "function") {
             callback()
@@ -72,18 +72,18 @@ export default {
         }
       })
     },
-    f_refush_rows(e) {
+    f_refush_rows(e,callback) {
       this.f_query("/py/get_data", (code, res) => {
         if (code) {
           this.rows = res.trim().split("\n").map(line => line.split(",")).sort((a, b) => {
             return b[1].replace(/\//g, "") - a[1].replace(/\//g, "")
           })
           this.rows.splice(0, 1)
-          this.f_search()
+          this.f_search(null,callback)
         }
       }, {month: this.this_month})
     },
-    f_search(e) {
+    f_search(e,callback) {
       try {
         if (this.search_str == "") {
           this.search_rows = -1
@@ -93,6 +93,9 @@ export default {
             return r
           })
             .filter(r => r[0].startsWith(this.search_str) || r[0].endsWith(this.search_str) || r[0].indexOf(this.search_str) >= 0)
+        }
+        if(typeof callback=="function"){
+          callback()
         }
       } catch (e1) {
         console.error(e1)
@@ -114,12 +117,17 @@ export default {
             //push
             if (confirm("确认保存'" + input_arr.join(",") + "'?")) {
               const month = day.substr(0, day.lastIndexOf("/")).replace("/", "")
-              //切换到要添加数据的月份
-              this.this_month = month
               if (this.months.indexOf(this.this_month) < 0) {
                 this.rows = [input_arr]
+                this.f_save()
+              }else{
+                //切换到要添加数据的月份
+                this.this_month = month
+                this.f_refush_rows(null,()=>{
+                  this.rows.push(input_arr)
+                  this.f_save()
+                })
               }
-              this.f_save()
             }
           } else {
             alert("输入有误!")
