@@ -226,7 +226,6 @@ export default {
       const axios = require("axios")
       axios[qtype](url, params).then(resp => {
         try {
-          console.info(resp)
           callback(resp.status == 200, resp.data)
         } catch (e) {
           console.error(e)
