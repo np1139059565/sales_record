@@ -7,6 +7,7 @@
       <input type="search" placeholder="search" @search="f_search" class="c_search" v-model="search_str"/>
       <input type="button" value="+" @click="f_add" class="c_add">
       <input type="button" value="trend" @click="f_open_page('Trend')" class="c_trend">
+      <input type="button" value="reptile" @click="f_open_page('Reptile')" class="c_reptile">
     </div>
     <div class="c_table">
       <!--thead-->
@@ -185,7 +186,7 @@ export default {
   height: 20%;
 }
 
-.c_months, .c_search, .c_add, .c_trend {
+.c_months, .c_search, .c_add, .c_trend, .c_reptile{
   height: 40px;
   border-radius: 5px;
 }
