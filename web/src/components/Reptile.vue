@@ -1,5 +1,6 @@
 <template>
   <div class="c_t_conter">
+    <audio src="" ref="audio1" controls="controls"></audio>
     <div v-for="h in d_hearts">
       <h1>{{h.name}}</h1>
       <p v-html="h.content"></p>
@@ -14,20 +15,31 @@ export default {
   data() {
     return {
       d_hearts:[
-		{name:"0",content:"heat 0"}
-	  ]
+        //{name:"0",content:"heat 0"}
+      ]
     }
   },
   mounted() {
     this.f_heart()
   },
   methods: {
+    f_tts(str){
+        //百度
+        try{
+          //var url = "https://fanyi.baidu.com/gettts?lan=zh&text="+encodeURI(str)+"&spd=5&source=web"
+          this.$refs.audio1.src = "/static/audio/11981.mp3"
+          this.$refs.audio1.play()
+        }catch(e){
+          console.error(e.stack)
+        }
+     },
     f_heart(){
       this.f_query("/py/get_heart"+(this.d_hearts.length>0?"?last_heart_name="+this.d_hearts[0].name:""), (code, res) => {
         try{
           if(code){
              console.info("heart len",res.length)
             if(this.d_hearts.length==0||res.length>0&&res[res.length-1].name!=this.d_hearts[0].name){
+              this.f_tts()
               res.map(h=>this.d_hearts.splice(0,0,h))
             }
           }else{
