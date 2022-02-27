@@ -2,7 +2,7 @@
   <div class="c_t_conter">
     <div v-for="h in d_hearts">
       <h1>{{h.name}}</h1>
-      <p>{{h.content}}</p>
+      <p v-html="h.content"></p>
     </div>
   </div>
 
@@ -13,29 +13,15 @@ export default {
   name: 'Trend',
   data() {
     return {
-      d_hearts:[]
+      d_hearts:[
+		{name:"0",content:"heat 0"}
+	  ]
     }
   },
   mounted() {
     this.f_heart()
   },
   methods: {
-  function tts(str,numb){
-				//百度
-				try{
-					var url = "https://fanyi.baidu.com/gettts?lan=zh&text="+encodeURI(str)+"&spd=5&source=web"
-					var n = new Audio(url)
-					n.src = url
-					n.play().then((da)=>{console.info(str)},(err)=>{
-						if(numb>=10){
-							console.error(err)
-						}else tts(str,numb)
-					})
-				}catch(e){
-					console.error(e.stack)
-					tts(str)
-				}
-			},
     f_heart(){
       this.f_query("/py/get_heart"+(this.d_hearts.length>0?"?last_heart_name="+this.d_hearts[0].name:""), (code, res) => {
         try{

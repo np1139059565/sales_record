@@ -92,7 +92,7 @@ def f_get_heart_data():
         #get heart content...
         for i in range(len(_heart_list)):
             _heart_name=_heart_list[i]
-            _heart_list[i]={"name":_heart_name,"content":_file.f_read(_HEART_PATH+_heart_name)}
+            _heart_list[i]={"name":time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(_heart_name))) ,"content":_file.f_read(_HEART_PATH+_heart_name)}
         return make_response(json.dumps(_heart_list),200)
     except Exception as e:
         logging.exception("server is err!",e)
