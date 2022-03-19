@@ -63,6 +63,7 @@ def add_data():
 @_flask_app.route('/set_heart', methods=["POST"])
 def f_set_heart_data():
     try:
+        _is_open_wx=request.args.get("isopenwx",_NULL)
         _heart_path = _HEART_PATH+str(time.time())
         _flask_app.logger.info("write heart... "+_heart_path)
         _heart=_NULL
@@ -71,6 +72,8 @@ def f_set_heart_data():
             _heart=v[0]
         _flask_app.logger.info(_heart)
         _file.f_write(_heart_path,_heart)
+        if _is_open_wx!=_NULL:
+            os.system("server\cmd\wx.bat "+_heart_path.replace("/","\\"))
         return make_response("",200)
     except Exception as e:
         logging.exception("server is err!",e)
@@ -82,9 +85,9 @@ def f_get_heart_data():
         #get all heart...
         _heart_list=os.listdir(_HEART_PATH)
         _heart_list.sort()
-        #get last heart list...
-        _last_heart_name=request.args.get("last_heart_name",_NULL)
         try:
+            #get last heart list...
+            _last_heart_name=request.args.get("last_heart_name",_NULL)
             _heart_list=_heart_list[_heart_list.index(_last_heart_name)+1:99]
         except:
             _heart_list=[_heart_list.pop()]
