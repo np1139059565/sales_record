@@ -5,7 +5,7 @@
       <select class="c_t_months" @change="f_refush_trend" v-model="this_month">
         <option v-for="m in months" :value="m">{{ m }}</option>
       </select>
-      <input type="button" value="back" @click="f_back()" class="c_t_back">
+      <input type="button" value="back" @click="f_back()" class="c_back_button">
     </div>
   </div>
 
@@ -259,8 +259,8 @@ export default {
   right: 0;
 }
 
-.c_t_months, .c_t_back {
-  min-height: 50px;
+.c_t_months, .c_back_button {
+  height: 40px;
   float: right;
   margin-right: 20px;
 }
