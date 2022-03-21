@@ -1,3 +1,4 @@
 start web\start.bat
-python server/start.py
+
+python server/flask_server.py
 pause

@@ -40,7 +40,7 @@ export default {
       this.$router.back()
     },
     f_refush_months(callback) {
-      this.f_query("/py/get_months", (code, res) => {
+      this.f_query("/py/get_month_arr", (code, res) => {
         if (code) {
           this.months = res
           if (this.months.indexOf(this.this_month) < 0) {
@@ -54,7 +54,7 @@ export default {
     },
     f_refush_trend() {
       const that=this
-      this.f_query("/py/get_data", (code, res) => {
+      this.f_query("/py/get_month_data", (code, res) => {
         if (code) {
           const datasetWithFilters = [];
           const seriesList = [];

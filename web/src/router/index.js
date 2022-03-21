@@ -4,8 +4,6 @@ import Index from '@/components/Index'
 
 import Trend from '@/components/Trend'
 
-import Reptile from '@/components/Reptile'
-
 import Table from '@/components/Table'
 
 Vue.use(Router)
@@ -21,11 +19,6 @@ export default new Router({
       path: '/trend',
       name: 'Trend',
       component: Trend
-    },
-    {
-      path: '/reptile',
-      name: 'Reptile',
-      component: Reptile
     },
     {
       path: '/table',

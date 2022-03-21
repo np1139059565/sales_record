@@ -64,7 +64,7 @@ export default {
       }
     },
     f_refush_months(callback) {
-      this.f_query("/py/get_months", (code, res) => {
+      this.f_query("/py/get_month_arr", (code, res) => {
         if (code) {
           this.months = res
           if (this.months.indexOf(this.this_month) < 0) {
@@ -77,7 +77,7 @@ export default {
       })
     },
     f_refush_rows(e,callback) {
-      this.f_query("/py/get_data", (code, res) => {
+      this.f_query("/py/get_month_data", (code, res) => {
         if (code) {
           this.rows = res.trim().split("\n").map(line => line.split(",")).sort((a, b) => {
             return b[1].replace(/\//g, "") - a[1].replace(/\//g, "")
@@ -142,7 +142,7 @@ export default {
       }
     },
     f_save() {
-      this.f_query("/py/add_data?month=" + this.this_month, (code, res) => {
+      this.f_query("/py/add_table_data?month=" + this.this_month, (code, res) => {
         alert("保存结果" + code)
         this.f_refush_months()
         this.f_refush_rows()

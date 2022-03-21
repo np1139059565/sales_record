@@ -1,3 +1,4 @@
+::依赖nircmd
 ::"d:\scrcpy gui\nircmd\nircmd.exe" sendmouse move -9999 9999
 ::"d:\scrcpy gui\nircmd\nircmd.exe" sendmouse move 60 50
 ::"d:\scrcpy gui\nircmd\nircmd.exe" sendmouse left click
