@@ -176,7 +176,7 @@ def f_start_phone_command():
         _flask_app.logger.info("phone_show_command...")
         _ip=request.args.get("ip",_NULL)
         _port=request.args.get("port",_NULL)
-        os.system("start server\cmd\start_phone.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
+        os.system("start server\cmd\push.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
         return make_response("ok",200)
     except Exception as e:
         logging.exception("server is err!",e)
