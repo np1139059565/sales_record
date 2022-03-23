@@ -1,8 +1,8 @@
 _is_init=$1
 _all_swap_file=$2
-_ip=$3
-_port=$4
-_server_ip=$5
+_server_ip=$3
+
+echo $0 $_is_init $_all_swap_file $_server_ip...
 
 _new_line_file="/sdcard/lcy/data/phone_data.swap"
 _long_length_file="/sdcard/lcy/data/phone_data.swap2"

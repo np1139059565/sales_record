@@ -1,11 +1,11 @@
-_ip=$1
-_port=$2
-_server_ip=$3
+_server_ip=$1
 
-_all_swap="/sdcard/lcy/data/start_loop.swap"
+echo $0 $_server_ip...
+
+_all_swap_file="/sdcard/lcy/data/start_loop.swap"
 #清空缓存
 _is_init_only=true
-rm -rf $_all_swap
+rm -rf $_all_swap_file
 
 while true;
 do
@@ -18,7 +18,7 @@ do
     #搜索..
     sh /sdcard/lcy/simulation_click.sh "$_search_str" "$_filter_str" "$_select_index"
     #读取长表格数据..
-    sh /sdcard/lcy/loop_read_phone_data.sh $_is_init_only $_all_swap $_ip $_port $_server_ip
+    sh /sdcard/lcy/loop_read_phone_data.sh $_is_init_only $_all_swap_file $_server_ip
   done < /sdcard/lcy/data/phone_arr.txt
   _is_init_only=false
   sleep 1;
