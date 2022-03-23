@@ -73,7 +73,8 @@ def f_add_monitor_child():
         _tmonitor=_NULL
         for v in request.form.items():
             #_data=json.loads(v[0])
-            _tmonitor=v[0]
+            _tmonitor=v[0].replace(" ","+")
+        _flask_app.logger.info(_tmonitor)
         _file.f_write(_tmonitor_file,_tmonitor)
         
         #to wx
@@ -136,7 +137,7 @@ def f_add_phone():
             phone_arr.append({"ip":_ip,"port":_port,"heart_time":time.time()})
             _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
 
-        return make_response(_rstr,201 if _rstr.find("connected to")!=0 else 200)
+        return make_response(_rstr,500 if _rstr.find("connected to")!=0 else 200)
     except Exception as e:
         logging.exception("server is err!",e)
         return make_response("server is err!",500)
@@ -156,7 +157,7 @@ def f_connect_phone():
             if _p.get("ip")==_ip and _p.get("port")==_port:
                 _isfind_phone=True
                 _rstr=_phone.phone_heart(_ip,_port)
-                if _rstr.find("already connected to")!=0 or _rstr.find("connected to")!=0:
+                if _rstr.find("already connected to")==0 or _rstr.find("connected to")==0:
                     #update heart time
                     phone_arr[i]["heart_time"]=time.time()
                     _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
@@ -176,7 +177,7 @@ def f_start_phone_command():
         _flask_app.logger.info("phone_show_command...")
         _ip=request.args.get("ip",_NULL)
         _port=request.args.get("port",_NULL)
-        os.system("start server\cmd\push.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
+        os.system("start server\cmd\start.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
         return make_response("ok",200)
     except Exception as e:
         logging.exception("server is err!",e)

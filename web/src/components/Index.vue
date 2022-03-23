@@ -17,8 +17,8 @@
     <div v-for="h in d_monitors">
       <p v-html="h.content"></p>
     </div>
+    <div class="c_loading" ref="loading1"></div>
   </div>
-
 </template>
 
 <script>
@@ -27,7 +27,8 @@ export default {
   data() {
     return {
       d_heart_id:-1,
-      d_heart_time:"2022-03-20T11:43:02.112Z",
+      d_heart_time:1647949908.3097613,
+      d_last_query_phone_heart_time:1647949908.3097613,
       d_phones:[
         // {ip:"192.168.1.157",port:5555,heart:0},
       ],
@@ -37,6 +38,7 @@ export default {
     }
   },
   mounted() {
+    this.f_init_base64()
     //stop heart
     if(this.d_heart_id>=0){
       clearInterval(this.d_heart_id)
@@ -45,9 +47,12 @@ export default {
     }
     //start new heart
     this.d_heart_id=setInterval(()=>{
+      //time heart
       this.f_query("/py/get_time",(code,str)=>this.d_heart_time=str)
+      //monitor heart
       this.f_get_last_monitor()
-      if(this.$refs.parr1.classList.contains("c_parr_close")>=0){
+      //phone heart
+      if(this.$refs.parr1.classList.contains("c_parr_close")){
         this.f_get_phones()
       }
     },2000)
@@ -97,8 +102,16 @@ export default {
       }
     },
     f_start_phone(pinfo){
-      this.f_query("py/start_phone_command?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>{
-        if(!code)alert("启动失败!")
+      this.$refs.loading1.style.display="block"
+      this.f_query("py/phone_heart?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
+        this.$refs.loading1.style.display=""
+        if(code){
+          this.f_query("py/start_phone_command?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>{
+            if(!code)alert("启动失败!")
+          })
+        }else{
+          alert("手机已经失联!")
+        }
       })
     },
     f_open_parr(){
@@ -113,8 +126,18 @@ export default {
           if(code){
             //  console.info("phone len",phonearr.length)
             this.d_phones=phonearr.map(p=>{
-              console.info(this.d_heart_time-p.heart_time)
-              p.style=("background:"+(this.d_heart_time-p.heart_time>60?"yellow":"green"))
+              const phone_heart_time=this.d_heart_time-p.heart_time
+              p.style=("background:"+(phone_heart_time>60?"red":(phone_heart_time>15?"yellow":"green")))
+              if(phone_heart_time>50&&this.d_heart_time-this.d_last_query_phone_heart_time>50){
+                this.d_last_query_phone_heart_time=this.d_heart_time//防止多次请求
+                this.f_query("py/phone_heart?ip="+p.ip+"&port="+p.port,(code,msg)=>{
+                  console.info(code,msg)
+                  if(!code){
+                    this.d_last_query_phone_heart_time=p.heart_time//请求失败立马再次发送
+                    p.style="background:red"
+                  }
+                })
+              }
               return p
             })
           }else{
@@ -125,6 +148,98 @@ export default {
         }
       })
     },
+    f_init_base64(){
+      window.Base64= {
+        _keyStr: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+        encode: function (e) {
+          var t = "";
+          var n, r, i, s, o, u, a;
+          var f = 0;
+          e = Base64._utf8_encode(e);
+          while (f < e.length) {
+            n = e.charCodeAt(f++);
+            r = e.charCodeAt(f++);
+            i = e.charCodeAt(f++);
+            s = n >> 2;
+            o = (n & 3) << 4 | r >> 4;
+            u = (r & 15) << 2 | i >> 6;
+            a = i & 63;
+            if (isNaN(r)) {
+              u = a = 64
+            } else if (isNaN(i)) {
+              a = 64
+            }
+            t = t + this._keyStr.charAt(s) + this._keyStr.charAt(o) + this._keyStr.charAt(u) + this._keyStr.charAt(a)
+          }
+          return t
+        },
+        decode: function (e) {
+          var t = "";
+          var n, r, i;
+          var s, o, u, a;
+          var f = 0;
+          e = e.replace(/[^A-Za-z0-9+/=]/g, "");
+          while (f < e.length) {
+            s = this._keyStr.indexOf(e.charAt(f++));
+            o = this._keyStr.indexOf(e.charAt(f++));
+            u = this._keyStr.indexOf(e.charAt(f++));
+            a = this._keyStr.indexOf(e.charAt(f++));
+            n = s << 2 | o >> 4;
+            r = (o & 15) << 4 | u >> 2;
+            i = (u & 3) << 6 | a;
+            t = t + String.fromCharCode(n);
+            if (u != 64) {
+              t = t + String.fromCharCode(r)
+            }
+            if (a != 64) {
+              t = t + String.fromCharCode(i)
+            }
+          }
+          t = Base64._utf8_decode(t);
+          return t
+        }, _utf8_encode: function (e) {
+          e = e.replace(/rn/g, "n");
+          var t = "";
+          for (var n = 0; n < e.length; n++) {
+            var r = e.charCodeAt(n);
+            if (r < 128) {
+              t += String.fromCharCode(r)
+            } else if (r > 127 && r < 2048) {
+              t += String.fromCharCode(r >> 6 | 192);
+              t += String.fromCharCode(r & 63 | 128)
+            } else {
+              t += String.fromCharCode(r >> 12 | 224);
+              t += String.fromCharCode(r >> 6 & 63 | 128);
+              t += String.fromCharCode(r & 63 | 128)
+            }
+          }
+          return t
+        }, _utf8_decode: function (e) {
+          var t = "";
+          var n = 0;
+          var r =0;
+          var c1 =0;
+          var c2 = 0;
+          while (n < e.length) {
+            r = e.charCodeAt(n);
+            if (r < 128) {
+              t += String.fromCharCode(r);
+              n++
+            } else if (r > 191 && r < 224) {
+              c2 = e.charCodeAt(n + 1);
+              t += String.fromCharCode((r & 31) << 6 | c2 & 63);
+              n += 2
+            } else {
+              c2 = e.charCodeAt(n + 1);
+              var c3 = e.charCodeAt(n + 2);
+              t += String.fromCharCode((r & 15) << 12 | (c2 & 63) << 6 | c3 & 63);
+              n += 3
+            }
+          }
+          return t
+        }
+      }
+    },
     f_get_last_monitor(){
       this.f_query("/py/get_last_monitor"+(this.d_monitors.length>0?"?last_heart_time="+this.d_monitors[0].name:""), (code, res) => {
         try{
@@ -132,7 +247,10 @@ export default {
             //  console.info("monitor len",res.length)
             if(this.d_monitors.length==0||res.length>0&&res[res.length-1].name!=this.d_monitors[0].name){
               this.f_play_tts()
-              res.map(h=>this.d_monitors.splice(0,0,h))
+              res.map(h=>{
+                h.content=Base64.decode(h.content).replace(/\$/g,"<br>")
+                this.d_monitors.splice(0,0,h)
+              })
             }
           }else{
             console.error("get monitor is fail...")
@@ -149,14 +267,12 @@ export default {
         params = {params: params}
       }
       const axios = require("axios")
-      axios[qtype](url, params).then(resp => {
-        try {
-          callback(resp.status == 200, resp.data)
-        } catch (e) {
-          console.error(e)
-          callback(0)
-        }
-      }).catch(e => console.error(e))
+      axios[qtype](url, params).then(resp => callback(resp.status == 200, resp.data))
+      .catch(e => {
+        if(e.response.status==500){
+          callback(false,e.response.data)
+        }else console.error(e)
+      })
     }
   }
 }
@@ -221,5 +337,14 @@ html,body,div,h1{
 .c_add_button {
   width: 40px;
 }
-
+.c_loading{
+  width:100%;
+  height:100%;
+  position: absolute;
+  top:0;
+  left:0;
+  cursor: progress;
+  background: rgba(255,255,255,0.5);
+  display: none;
+}
 </style>
