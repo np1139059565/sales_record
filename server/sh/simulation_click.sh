@@ -18,8 +18,7 @@ sleep 1;
 #是否打开品类型号选择框..
 _filter_str=$2
 _select_index=$3
-if [ -n "$_filter_str" or "$_select_index" ]
-then
+if [ -n "$_filter_str" or "$_select_index" ];then
   #打开品类型号选择框
   input tap 318 250
   sleep 1;

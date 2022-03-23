@@ -1,3 +1,4 @@
+#!/bin/bash
 _server_ip=$1
 
 echo $0 $_server_ip...
