@@ -8,6 +8,7 @@ _server_ip=$3
 _new_line_file="/sdcard/lcy/data/phone_data.swap"
 _long_length_file="/sdcard/lcy/data/phone_data.swap2"
 _ui_swap_file2="/sdcard/lcy/data/ui.swap2"
+_sort_swap_file="/sdcard/lcy/data/sort.swap"
 
 _start_time=$(date '+%s')
 #读取全屏数据
@@ -22,7 +23,8 @@ f_read_phone_data(){
   #判断是否存在新数据
   if [ -f $_new_line_file ];then
     #去重
-    sort -n $_new_line_file|uniq>$_new_line_file
+    sort -n $_new_line_file|uniq>$_sort_swap_file
+    cat $_sort_swap_file>$_new_line_file
     #追加到总缓存中
     cat $_new_line_file>>$_all_swap_file
     #发送到服务端
@@ -67,10 +69,11 @@ do
 done
 
 #去重..
-sort -n $_long_length_file|uniq>$_long_length_file
+sort -n $_long_length_file|uniq>$_sort_swap_file
+cat $_sort_swap_file>$_long_length_file
 #初始化时将所有数据追加到总缓存
 if [ $_is_init ];then
-  echo init..................... $_is_init
+  echo init.....................
   cat $_long_length_file>>$_all_swap_file
 fi
 
