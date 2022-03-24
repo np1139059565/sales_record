@@ -123,10 +123,10 @@ def f_phone_heart():
         return make_response("server is err!",500)
 
 
-@_flask_app.route("/add_phone",methods=["GET"])
-def f_add_phone():
+@_flask_app.route("/phone_add",methods=["GET"])
+def f_phone_add():
     try:
-        _flask_app.logger.info("add_phone...")
+        _flask_app.logger.info("phone_add...")
         _ip=request.args.get("ip",_NULL)
         _port=request.args.get("port",_NULL)
         #check phone
@@ -138,6 +138,24 @@ def f_add_phone():
             _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
 
         return make_response(_rstr,500 if _rstr.find("connected to")!=0 else 200)
+    except Exception as e:
+        logging.exception("server is err!",e)
+        return make_response("server is err!",500)
+
+@_flask_app.route("/phone_delete",methods=["GET"])
+def f_phone_delete():
+    try:
+        _flask_app.logger.info("phone_delete...")
+        _ip=request.args.get("ip",_NULL)
+        _port=request.args.get("port",_NULL)
+        phone_arr=json.loads(_file.f_read(_PHONES_PATH))
+        for i in range(len(phone_arr)):
+            if _ip==phone_arr[i].get("ip"):
+                phone_arr.pop(i)
+                _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
+                return make_response("ok",200)
+        return make_response("not find ip",500)
+        
     except Exception as e:
         logging.exception("server is err!",e)
         return make_response("server is err!",500)
@@ -171,13 +189,13 @@ def f_connect_phone():
         return make_response("server is err!",500)
 
 
-@_flask_app.route("/start_phone_command",methods=["GET"])
-def f_start_phone_command():
+@_flask_app.route("/phone_start",methods=["GET"])
+def f_phone_start():
     try:
         _flask_app.logger.info("phone_show_command...")
         _ip=request.args.get("ip",_NULL)
         _port=request.args.get("port",_NULL)
-        os.system("start server\cmd\start.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
+        os.system("start server\cmd\start_phone.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
         return make_response("ok",200)
     except Exception as e:
         logging.exception("server is err!",e)

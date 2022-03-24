@@ -9,7 +9,7 @@
     <br>
     <h1 class="c_head">{{new Date(d_heart_time*1000).toJSON()}}</h1>
     <div class="c_parr c_parr_close" ref="parr1" @mouseover="f_open_parr()" @mouseout="f_close_parr()">
-      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_start_phone(p)">
+      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_click_phone(p)">
         {{p.ip}}:{{p.port}}
       </div>
       <div class="c_phone c_padd" @click="f_add_phone()">+</div>
@@ -90,7 +90,7 @@ export default {
           alert("ip或端口重复!")
           this.f_add_phone(e,inputStr)
         }else{
-          this.f_query("/py/add_phone?ip="+iport[0].trim()+"&port="+iport[1].trim(),(code,msg)=>{
+          this.f_query_only("/py/phone_add?ip="+iport[0].trim()+"&port="+iport[1].trim(),(code,msg)=>{
             if(code){
               alert("添加成功!")
             }else{
@@ -101,18 +101,20 @@ export default {
         }
       }
     },
-    f_start_phone(pinfo){
-      this.$refs.loading1.style.display="block"
-      this.f_query("py/phone_heart?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
-        this.$refs.loading1.style.display=""
-        if(code){
-          this.f_query("py/start_phone_command?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>{
-            if(!code)alert("启动失败!")
-          })
-        }else{
-          alert("手机已经失联!")
-        }
-      })
+    f_click_phone(pinfo){
+      if(pinfo.style.indexOf("red")>=0&&confirm("确定要删除手机吗?")){
+        this.f_query("py/phone_delete?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>alert("删除结果:"+code))
+      }else if(confirm("确定要重新打开扫描吗?")){
+        this.f_query_only("py/phone_heart?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
+          if(code){
+            this.f_query("py/phone_start?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>{
+              if(!code)alert("启动失败!")
+            })
+          }else{
+            alert("手机已经失联!")
+          }
+        },true)
+      }
     },
     f_open_parr(){
       this.$refs.parr1.className="c_parr"
@@ -127,8 +129,10 @@ export default {
             //  console.info("phone len",phonearr.length)
             this.d_phones=phonearr.map(p=>{
               const phone_heart_time=this.d_heart_time-p.heart_time
+              //标记颜色
               p.style=("background:"+(phone_heart_time>60?"red":(phone_heart_time>15?"yellow":"green")))
-              if(phone_heart_time>50&&this.d_heart_time-this.d_last_query_phone_heart_time>50){
+              //更新状态
+              if(this.d_phones.length==0||phone_heart_time>50&&this.d_heart_time-this.d_last_query_phone_heart_time>50){
                 this.d_last_query_phone_heart_time=this.d_heart_time//防止多次请求
                 this.f_query("py/phone_heart?ip="+p.ip+"&port="+p.port,(code,msg)=>{
                   console.info(code,msg)
@@ -261,14 +265,28 @@ export default {
         }
       })
     },
-    f_query(url, callback, params = {}, qtype = "get") {
+    f_query_only(url,callback,params={}){
+      this.f_query(url,callback,params,"get",true)
+    },
+    f_query(url, callback, params = {}, qtype = "get",showLoading=false) {
+      if(showLoading){
+        this.$refs.loading1.style.display="block"
+      }
       qtype = qtype.toLowerCase()
       if (qtype == "get") {
         params = {params: params}
       }
       const axios = require("axios")
-      axios[qtype](url, params).then(resp => callback(resp.status == 200, resp.data))
+      axios[qtype](url, params).then(resp => {
+        if(showLoading){
+          this.$refs.loading1.style.display=""
+        }
+        callback(resp.status == 200, resp.data)
+      })
       .catch(e => {
+        if(showLoading){
+          this.$refs.loading1.style.display=""
+        }
         if(e.response.status==500){
           callback(false,e.response.data)
         }else console.error(e)

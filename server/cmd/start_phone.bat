@@ -4,6 +4,8 @@ set _phone_ip=%1
 set _port=%2
 set _server_ip=%3
 
+title phone %_phone_ip%:%_port%
+
 echo %0 %_phone_ip% %_port% %_server_ip%...
 
 adb -s %_phone_ip%:%_port% shell mkdir -p /sdcard/lcy/data
