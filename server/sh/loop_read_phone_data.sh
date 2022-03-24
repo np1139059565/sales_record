@@ -63,7 +63,6 @@ rm -rf $_long_length_file
 while [[ $_isbootom != 1 ]]
 do
   f_read_phone_data
-  echo swipe..
   input swipe 400 2000 400 1200
   _isbootom=$(cat $_ui_swap_file2|grep "/tv_footer_tips"|wc -l)
 done
