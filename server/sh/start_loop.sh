@@ -4,6 +4,7 @@ _server_ip=$1
 echo $0 $_server_ip...
 
 _all_swap_file="/sdcard/lcy/data/start_loop.swap"
+_phone_arr_file="/sdcard/lcy/data/phone_arr.txt"
 #清空缓存
 _is_init_only=true
 rm -rf $_all_swap_file
@@ -20,7 +21,7 @@ do
     sh /sdcard/lcy/simulation_click.sh "$_search_str" "$_filter_str" "$_select_index"
     #读取长表格数据..
     sh /sdcard/lcy/loop_read_phone_data.sh $_is_init_only $_all_swap_file $_server_ip
-  done < /sdcard/lcy/data/phone_arr.txt
+  done < _phone_arr_file
   _is_init_only=false
   sleep 1;
 done
