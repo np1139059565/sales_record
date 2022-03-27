@@ -1,39 +1,56 @@
-echo $0 "$1" "$2" "$3"..
+echo $0 $1 $2 $3 $4..
+
+_search_str=$1
+_select_index=$2
+_clean_button=$3
+_search_button=$4
+_ui_sh_file="/sdcard/lcy/get_ui.sh"
+_ui_swap_file="/sdcard/lcy/data/ui.swap"
+
 
 #打开搜索框..
-_search_str=$1
 input tap 300 150
 sleep 1;
 
-#删除旧搜索内容..
-input  tap 800 150
-input  tap 800 150
+
+#计算清空按钮的坐标(可能不准确,建议使用传进来的坐标)..
+if [ -z "$_clean_button" ];then
+  sh $_ui_sh_file "tv_cancel"
+  _clean_button=$(head -1 $_ui_swap_file|awk -F ']' '{print $1}'|awk -F '[' '{print $2}')
+  _x=$(echo $_clean_button|awk -F ' ' '{print $1}')
+  let _x-=75
+  _y=$(echo $_clean_button|awk -F ' ' '{print $1}')
+  let _y+=42
+  _clean_button="$_x $_y"
+fi
+#清空旧搜索内容..
+input  tap $_clean_button
+input  tap $_clean_button
 
 #输入搜索内容(不能输入中文)..
 input text "$_search_str"
 sleep 1;
 
-#点击搜索..
-input tap 1000 2200
+#搜索按钮的坐标(可能不准确,建议使用传进来的坐标)..
+if [ -z "$_search_button" ];then
+  _search_button="1000 2200"
+fi
+input tap $_search_button
 sleep 1;
 
 #是否打开品类型号选择框..
-_filter_str=$2
-_select_index=$3
-if [ -n "$_filter_str" -o "$_select_index" ];then
+if [ -n "$_select_index" ];then
   #打开品类型号选择框
-  input tap 318 250
+  sh $_ui_sh_file "tv_item"
+  _pbound=$(head -2 $_ui_swap_file|awk -F ']' '{print $1}'|awk -F '[' '{print $2}')
+  input tap $_pbound
   sleep 1;
   #过滤品类型号
-  sh /sdcard/lcy/get_ui.sh "tv_name"
-  cat /sdcard/lcy/data/ui.swap2|grep "$_filter_str">/sdcard/lcy/data/simulation_click.swap
-  #根据index选择对应的品类型号
-  if [ -n "$_select_index" ];then
-    _pbound=$(sed -n $_select_index'p' /sdcard/lcy/data/simulation_click.swap|awk -F ']' '{print $1}'|awk -F '[' '{print $2}')
-    input tap $_pbound
-    #确认
-    sh /sdcard/lcy/get_ui.sh "tv_confirm"
-    _pbound=$(sed -n 1'p' /sdcard/lcy/data/ui.swap2|awk -F ']' '{print $1}'|awk -F '[' '{print $2}')
-    input tap $_pbound
-  fi
+  sh $_ui_sh_file "tv_name"
+  _pbound=$(sed -n $_select_index'p' $_ui_swap_file|awk -F ']' '{print $1}'|awk -F '[' '{print $2}')
+  input tap $_pbound
+  #确认
+  sh $_ui_sh_file "tv_confirm"
+  _pbound=$(head -1 $_ui_swap_file|awk -F ']' '{print $1}'|awk -F '[' '{print $2}')
+  input tap $_pbound
 fi

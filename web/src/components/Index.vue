@@ -14,8 +14,8 @@
       </div>
       <div class="c_phone c_padd" @click="f_add_phone()">+</div>
     </div>
-    <div v-for="h in d_monitors">
-      <p v-html="h.content"></p>
+    <div v-for="(h,i) in d_monitors">
+      <p v-html="h.content" :style="{'color':i==0?'red':''}"></p>
     </div>
     <div class="c_loading" ref="loading1"></div>
   </div>
@@ -28,12 +28,12 @@ export default {
     return {
       d_heart_id:-1,
       d_heart_time:1647949908.3097613,
-      d_last_query_phone_heart_time:1647949908.3097613,
+      d_last_connect_time:1647949908.3097613,
       d_phones:[
         // {ip:"192.168.1.157",port:5555,heart:0},
       ],
       d_monitors:[
-        //{name:"0",content:"heat 0"}
+        //{time:"24643345.4666",content:"heat 0"}
       ],
     }
   },
@@ -50,10 +50,10 @@ export default {
       //time heart
       this.f_query("/py/get_time",(code,str)=>this.d_heart_time=str)
       //monitor heart
-      this.f_get_last_monitor()
+      this.f_monitor_heart()
       //phone heart
       if(this.$refs.parr1.classList.contains("c_parr_close")){
-        this.f_get_phones()
+        this.f_phone_heart()
       }
     },2000)
   },
@@ -102,10 +102,8 @@ export default {
       }
     },
     f_click_phone(pinfo){
-      if(pinfo.style.indexOf("red")>=0&&confirm("确定要删除手机吗?")){
-        this.f_query("py/phone_delete?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>alert("删除结果:"+code))
-      }else if(confirm("确定要重新打开扫描吗?")){
-        this.f_query_only("py/phone_heart?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
+      if(confirm("确定要重新打开扫描吗?")){
+        this.f_query_only("py/connect_phone?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
           if(code){
             this.f_query("py/phone_start?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>{
               if(!code)alert("启动失败!")
@@ -114,6 +112,8 @@ export default {
             alert("手机已经失联!")
           }
         },true)
+      }else if(confirm("确定要删除手机吗?")){
+        this.f_query("py/phone_delete?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>alert("删除结果:"+code))
       }
     },
     f_open_parr(){
@@ -122,30 +122,16 @@ export default {
     f_close_parr(){
       this.$refs.parr1.className="c_parr c_parr_close"
     },
-    f_get_phones(){
+    f_phone_heart(){
       this.f_query("/py/get_phones", (code, phonearr) => {
         try{
           if(code){
             //  console.info("phone len",phonearr.length)
             this.d_phones=phonearr.map(p=>{
-              const phone_heart_time=this.d_heart_time-p.heart_time
-              //标记颜色
-              p.style=("background:"+(phone_heart_time>60?"red":(phone_heart_time>15?"yellow":"green")))
-              //更新状态
-              if(this.d_phones.length==0||phone_heart_time>50&&this.d_heart_time-this.d_last_query_phone_heart_time>50){
-                this.d_last_query_phone_heart_time=this.d_heart_time//防止多次请求
-                this.f_query("py/phone_heart?ip="+p.ip+"&port="+p.port,(code,msg)=>{
-                  console.info(code,msg)
-                  if(!code){
-                    this.d_last_query_phone_heart_time=p.heart_time//请求失败立马再次发送
-                    p.style="background:red"
-                  }
-                })
-              }
+              //颜色标记
+              p.style=("background:"+(this.d_heart_time-p.heart_time>15?"yellow":"green"))
               return p
             })
-          }else{
-            console.error("get phone is fail...")
           }
         }catch(e){
           console.error(e)
@@ -244,17 +230,19 @@ export default {
         }
       }
     },
-    f_get_last_monitor(){
-      this.f_query("/py/get_last_monitor"+(this.d_monitors.length>0?"?last_heart_time="+this.d_monitors[0].name:""), (code, res) => {
+    f_monitor_heart(){
+      this.f_query("/py/get_monitor_new_times"+(this.d_monitors.length>0?"?last_heart_time="+this.d_monitors[0].time:""), (code, times) => {
         try{
           if(code){
-            //  console.info("monitor len",res.length)
-            if(this.d_monitors.length==0||res.length>0&&res[res.length-1].name!=this.d_monitors[0].name){
+            //  console.info("monitor len",times.length)
+            if(this.d_monitors.length==0||times.length>0&&times[times.length-1]!=this.d_monitors[0].time){
               this.f_play_tts()
-              res.map(h=>{
-                h.content=Base64.decode(h.content).replace(/\$/g,"<br>")
-                this.d_monitors.splice(0,0,h)
-              })
+              times.map(time=>this.f_query("/py/get_monitor_info?time="+time,(code,content)=>{
+                this.d_monitors.splice(0,0,{
+                  time:time,
+                  content:Base64.decode(content).replace(/\$/g,"<br>")
+                })
+              }))
             }
           }else{
             console.error("get monitor is fail...")
