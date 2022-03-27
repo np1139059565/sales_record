@@ -88,18 +88,27 @@ def f_add_monitor_child():
         return make_response("server is err",500)
 
 
-@_flask_app.route('/get_monitor_new_times',methods=["GET"])
-def f_get_monitor_new_times():
+@_flask_app.route('/get_monitor_last_times',methods=["GET"])
+def f_get_monitor_last_times():
     try:
-        _flask_app.logger.info("get_monitor_new_times...")
+        _flask_app.logger.info("get_monitor_last_times...")
         #get all monitor name...
         _monitor_arr=os.listdir(_MONITOR_PATH)
         _monitor_arr.sort()
         try:
-            #get last monitor name arr...
+            #get last index by name...
             _last_heart_time=request.args.get("last_heart_time",_NULL)
-            _monitor_arr=_monitor_arr[_monitor_arr.find(_last_heart_time)+1:len(_monitor_arr)]
-        except:
+            _last_index=_monitor_arr.index(_last_heart_time)
+            #remove cache
+            if _last_index>100:
+                for i in reversed(range(_last_index)):
+                    if i>30:
+                        _flask_app.logger.info("remove monitor cache "+_MONITOR_PATH+_monitor_arr[i])
+                        os.remove(_MONITOR_PATH+_monitor_arr[i])
+            
+            _monitor_arr=_monitor_arr[_last_index+1:len(_monitor_arr)]
+        except Exception as e1:
+            logging.exception("server is err!",e1)
             _monitor_arr=[_monitor_arr.pop()]
         return make_response(json.dumps(_monitor_arr),200)
     except Exception as e:
@@ -132,13 +141,14 @@ def f_phone_add():
         _flask_app.logger.info("phone_add...")
         _ip=request.args.get("ip",_NULL)
         _port=request.args.get("port",_NULL)
+        _search_button=request.args.get("search_button",_NULL)
         #check phone
         _rstr=_phone.connect(_ip,_port)
         _connect_ok=(_rstr.find("connected to")==0 or _rstr.find("already connected to")==0)
         if _connect_ok:
             #add phone
             phone_arr=json.loads(_file.f_read(_PHONES_PATH))
-            phone_arr.append({"ip":_ip,"port":_port,"heart_time":time.time()})
+            phone_arr.append({"ip":_ip,"port":_port,"heart_time":time.time(),"search_button":_search_button})
             _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
 
         return make_response(_rstr,200 if _connect_ok else 500)
@@ -189,7 +199,10 @@ def f_phone_start():
         _flask_app.logger.info("phone_show_command...")
         _ip=request.args.get("ip",_NULL)
         _port=request.args.get("port",_NULL)
-        os.system("start server\cmd\start_phone.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip())
+        _search_button=request.args.get("search_button","")
+        _search_str=request.args.get("search_str",",1")
+        os.system("start server\cmd\start_phone.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip()
+        +" \""+_search_button+"\""+" \""+_search_str+"\"")
         return make_response("ok",200)
     except Exception as e:
         logging.exception("server is err!",e)
@@ -199,7 +212,13 @@ def f_phone_start():
 @_flask_app.route("/phone_heart",methods=["GET"])
 def f_phone_heart():
     try:
-        _flask_app.logger.info("phone_heart..."+request.remote_addr)
+        _phone_ip=request.remote_addr
+        _flask_app.logger.info("phone_heart..."+_phone_ip)
+        phone_arr=json.loads(_file.f_read(_PHONES_PATH))
+        for i in range(len(phone_arr)):
+            if _phone_ip==phone_arr[i].get("ip"):
+                phone_arr[i]["heart_time"]=time.time()
+                _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
         return make_response("ok",200)
     except Exception as e:
         logging.exception("server is err!",e)

@@ -10,6 +10,7 @@ _phone_new_line_file="/sdcard/lcy/data/phone_data.swap2"
 _phone_sort_file="/sdcard/lcy/data/phone_data.swap3"
 
 _start_time=$(date '+%s')
+_heart_last_time=$(date '+%s')
 #读取全屏数据
 f_read_phone_data(){
   rm -rf $_phone_new_line_file
@@ -19,6 +20,12 @@ f_read_phone_data(){
   sed 's/tv_product_level/\ntv_product_level/g'|
   grep -E 'tv_product_level.*tv_sku_name.*tv_price.*tv_product_number'|
   awk -F '/>' '{print $2$4$6$8}'|f_filter_new_line>>$_phone_data_file
+  #心跳
+  _heart_time=$(($(date '+%s')-_heart_last_time))
+  if [ $_heart_time -gt 6 ];then
+    _heart_last_time=$(date '+%s')
+    curl -X GET "$_server_ip:5000/phone_heart"
+  fi
   #判断是否存在新数据
   if [ $_is_init == false -a  -f $_phone_new_line_file ];then
     #去重
@@ -44,14 +51,15 @@ f_myb64(){
 f_filter_new_line(){
   while read _line
   do
+    _spline=$(echo $_line|sed 's/\/$//g')
     #缓存表是否存在此条数据
-    _comp_count=$(grep -c "^$_line$" $_long_swap_file)
+    _comp_count=$(grep -c "^$_spline" $_long_swap_file)
     #收集新数据
     if [ $_comp_count == 0 ];then
-      echo $_line>>$_phone_new_line_file
+      echo $_spline>>$_phone_new_line_file
     fi
     #返回数据到管道
-    echo $_line
+    echo $_spline
   done
 }
 
@@ -67,9 +75,9 @@ done
 #去重..
 sort -n $_phone_data_file|uniq>$_phone_sort_file
 cat $_phone_sort_file>$_phone_data_file
-#初始化时将所有数据追加到总缓存
+#将所有数据追加到总缓存
 if [ $_is_init ];then
-  echo init.....................
+  echo copy data to long swap..
   cat $_phone_data_file>>$_long_swap_file
 fi
 

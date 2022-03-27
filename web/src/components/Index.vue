@@ -9,7 +9,7 @@
     <br>
     <h1 class="c_head">{{new Date(d_heart_time*1000).toJSON()}}</h1>
     <div class="c_parr c_parr_close" ref="parr1" @mouseover="f_open_parr()" @mouseout="f_close_parr()">
-      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_click_phone(p)">
+      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_click_phone(p)" :title="p.search_button">
         {{p.ip}}:{{p.port}}
       </div>
       <div class="c_phone c_padd" @click="f_add_phone()">+</div>
@@ -82,7 +82,7 @@ export default {
           console.error(e.stack)
         }
     },
-    f_add_phone(e,inputStr="192.168.1.1:5555"){
+    f_add_phone(e,inputStr="192.168.1.1:5555:1000 2200"){
       inputStr = prompt("新增手机(注意,必须在同一网段内)", inputStr)
       if(inputStr!=null){
         const iport=inputStr.trim().split(":")
@@ -90,7 +90,7 @@ export default {
           alert("ip或端口重复!")
           this.f_add_phone(e,inputStr)
         }else{
-          this.f_query_only("/py/phone_add?ip="+iport[0].trim()+"&port="+iport[1].trim(),(code,msg)=>{
+          this.f_query_only("/py/phone_add?ip="+iport[0].trim()+"&port="+iport[1].trim()+"&search_button="+iport[2].trim(),(code,msg)=>{
             if(code){
               alert("添加成功!")
             }else{
@@ -102,10 +102,12 @@ export default {
       }
     },
     f_click_phone(pinfo){
-      if(confirm("确定要重新打开扫描吗?")){
+      const inputStr=prompt("打开新扫描(搜索内容,使用\\n换行)", "")
+      if(inputStr!=null){
         this.f_query_only("py/connect_phone?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
           if(code){
-            this.f_query("py/phone_start?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>{
+            this.f_query("py/phone_start?ip="+pinfo.ip+"&port="+pinfo.port+"&search_button="
+            +pinfo.search_button+"&search_str="+inputStr,(code)=>{
               if(!code)alert("启动失败!")
             })
           }else{
@@ -231,7 +233,7 @@ export default {
       }
     },
     f_monitor_heart(){
-      this.f_query("/py/get_monitor_new_times"+(this.d_monitors.length>0?"?last_heart_time="+this.d_monitors[0].time:""), (code, times) => {
+      this.f_query("/py/get_monitor_last_times"+(this.d_monitors.length>0?"?last_heart_time="+this.d_monitors[0].time:""), (code, times) => {
         try{
           if(code){
             //  console.info("monitor len",times.length)

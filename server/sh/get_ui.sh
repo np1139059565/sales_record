@@ -5,6 +5,7 @@ _werr=0
 _ui_file="/sdcard/lcy/data/ui.xml"
 _swap_file="/sdcard/lcy/data/ui.swap"
 
+_start_time=$(date '+%s')
 #读取页面内容..
 while [ $_wres -eq $_werr ]
 do
@@ -27,3 +28,6 @@ awk -F '"' '{print $1$3$2}'|
 sed 's/,/ /g'|
 sed 's/<\/node>//g'|
 grep -E "$_grep_str">$_swap_file
+
+_end_time=$(date '+%s')
+echo read phone ui used time $((_end_time-_start_time)) s, line $(cat $_swap_file|wc -l)
