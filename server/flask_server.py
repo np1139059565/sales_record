@@ -146,16 +146,16 @@ def f_add_phone():
         _search_button=request.args.get("search_button",_NULL)
         _search_str=request.args.get("search_str",",1")
         _ok=True
+        _rstr=_adb.tcpip(_local_device,_port)
         #tcpip..
-        if _local_device!=_NULL and _adb.tcpip(_local_device,_port).find("restarting in TCP mode port:")!=0:
+        if _local_device!=_NULL and _rstr.find("restarting in TCP mode port:")!=0:
             _ok=False
-        _flask_app.logger.info("tcpip to "+_local_device+" "+_port+" is "+str(_ok))
+        _flask_app.logger.info(_rstr)
         #connect..
-        _rstr="tcpip local device is fail"
         if _ok:
             _rstr=_adb.connect(_wifi_device)
             _ok=(_rstr.find("connected to")==0 or _rstr.find("already connected to")==0)
-        _flask_app.logger.info("connect to "+_wifi_device+" is "+str(_ok))
+        _flask_app.logger.info(_rstr)
         if _ok:
             #add phone
             phone_arr=json.loads(_file.f_read(_PHONES_PATH))
@@ -204,17 +204,18 @@ def f_phone_start():
         _search_button=request.args.get("search_button","")
         _search_str=request.args.get("search_str",",1")
         _ok=True
+        _rstr="tcpip local device is fail"
         #re open tcpip
         if _local_device!=_NULL:
             _port=_wifi_device.split(":")[1]
-            _ok=(_adb.tcpip(_local_device,_port).find("restarting in TCP mode port:")!=0)
-            _flask_app.logger.info("tcpip to "+_local_device+" "+_port+" is "+str(_ok))
+            _rstr=_adb.tcpip(_local_device,_port)
+            _ok=(_rstr.find("restarting in TCP mode port:")!=0)
+            _flask_app.logger.info(_rstr)
         #connect..
-        _rstr="tcpip local device is fail"
         if _ok:
             _rstr=_adb.connect(_wifi_device)
             _ok=(_rstr.find("connected to")==0 or _rstr.find("already connected to")==0)
-        _flask_app.logger.info("connect to "+_wifi_device+" is "+str(_ok))
+        _flask_app.logger.info(_rstr)
         #start..
         if _ok:
             os.system("start server\cmd\start_phone.bat "+_wifi_device+" "+_mip.f_get_local_ip()
