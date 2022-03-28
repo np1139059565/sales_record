@@ -87,7 +87,7 @@ export default {
       //get local device
       this.f_query_only("/py/get_adb_devices",(code,msg)=>{
         const local_device=msg.split("\r\n")[1].split("\t")[0]
-        inputStr = prompt("新增手机(注意,必须在同一网段内)", inputStr+";"+local_device)
+        inputStr = prompt("新增手机(连接wifi>打开开发者模式>打开USB调试>插入电脑(只能插一台手机))>修改搜索坐标>修改ip和端口(不能重复)", inputStr+";"+local_device)
         if(inputStr!=null){
           const inputArr=inputStr.trim().split(";")
           if(this.d_phones.filter(p=>p.wifi_device==inputArr[2].trim()
@@ -114,7 +114,7 @@ export default {
       var isone=false
       if(inputStr==null){
         isone=true
-        inputStr=prompt("打开新扫描(搜索内容,使用\\n换行)", pinfo.search_str)
+        inputStr=prompt("打开新扫描(搜索多种机型,使用\\n换行)", pinfo.search_str)
       }
       //open scan..
       if(inputStr!=null){

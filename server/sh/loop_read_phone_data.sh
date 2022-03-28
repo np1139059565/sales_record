@@ -51,7 +51,7 @@ f_myb64(){
 f_filter_new_line(){
   while read _line
   do
-    _spline=$(echo $_line|sed 's/\/$//g')
+    _spline=$(echo $_line|sed 's/\/$//g'|awk -F '¥' '{print $1}')
     #缓存表是否存在此条数据
     _comp_count=$(grep -c "^$_spline" $_long_swap_file)
     #收集新数据
