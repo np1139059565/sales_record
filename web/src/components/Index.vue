@@ -114,14 +114,14 @@ export default {
       var isone=false
       if(inputStr==null){
         isone=true
-        inputStr=prompt("打开新扫描(1代表全部(写了1就不能再写其他的数字了),使用~连接数字;搜索多种机型时,使用\\n换行)", pinfo.search_str)
+        inputStr=prompt("打开新扫描(使用~连接数字(1代表全部,写了1就不能再写其他的数字了);搜索多种机型时,使用\\n换行)", pinfo.search_str)
       }
       //open scan..
       if(inputStr!=null){
         //init params
         if(params==null){
           params="?wifi_device="+pinfo.wifi_device+
-          "&search_button="+pinfo.search_button+"&search_str="+pinfo.search_str
+          "&search_button="+pinfo.search_button+"&search_str="+pinfo.inputStr
         }
         //start
         this.f_query_only("py/phone_start"+params,(code,msg)=>{
