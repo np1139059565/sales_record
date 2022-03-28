@@ -1,9 +1,9 @@
 chcp 65001
 
 set _device=%1
-set _server_ip=%3
-set _search_button=%4
-set _search_str=%5
+set _server_ip=%2
+set _search_button=%3
+set _search_str=%4
 
 echo %0 %_device% %_port% %_server_ip% %_search_button%...
 
