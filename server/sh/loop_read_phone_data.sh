@@ -28,11 +28,6 @@ f_read_phone_data(){
   fi
   #判断是否存在新数据
   if [ $_is_init == false -a  -f $_phone_new_line_file ];then
-    #去重
-    sort -n $_phone_new_line_file|uniq>$_phone_sort_file
-    cat $_phone_sort_file>$_phone_new_line_file
-    #追加到总缓存中
-    cat $_phone_new_line_file>>$_long_swap_file
     #发送到服务端
     _all_line_b64=$(echo $(cat $_phone_new_line_file|tr "\n" "$")|f_myb64)
     curl -X POST -d "$_all_line_b64" "$_server_ip/py/add_monitor_child"
@@ -52,14 +47,31 @@ f_filter_new_line(){
   while read _line
   do
     _spline=$(echo $_line|sed 's/\/$//g'|awk -F '¥' '{print $1}')
-    #缓存表是否存在此条数据
+    #缓存是否存在此条数据
     _comp_count=$(grep -c "^$_spline" $_long_swap_file)
-    #收集新数据
     if [ $_comp_count == 0 ];then
-      echo $_spline>>$_phone_new_line_file
+      #收集新数据
+      echo $_line>>$_phone_new_line_file
+      #追加到缓存中
+      echo $_line>>$_long_swap_file
+    else
+      #对比库存数据
+      _new_kc=$(echo $_line|awk -F ' ' '{print $NF}')
+      _max_kc=$(grep "^$_spline" $_long_swap_file|awk -F ' ' '{print $NF}'|sort -nr|head -1)
+      if [ $_new_kc -ne $_max_kc ];then
+        echo update kc $_new_kc $_max_kc..
+        #更新缓存中的库存
+        sed -i "/^$_spline/c\\$_line" $_long_swap_file
+        #库存增加时属于新数据
+        if [ $_new_kc -gt $_max_kc ];then
+          #收集新数据
+          echo $_line>>$_phone_new_line_file
+        fi
+      fi
     fi
+      
     #返回数据到管道
-    echo $_spline
+    echo $_line
   done
 }
 
