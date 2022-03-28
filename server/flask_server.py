@@ -209,7 +209,7 @@ def f_phone_start():
         if _local_device!=_NULL:
             _port=_wifi_device.split(":")[1]
             _rstr=_adb.tcpip(_local_device,_port)
-            _ok=(_rstr.find("restarting in TCP mode port:")!=0)
+            _ok=(_rstr.find("restarting in TCP mode port:")==0)
             _flask_app.logger.info(_rstr)
         #connect..
         if _ok:
