@@ -233,7 +233,7 @@ def f_phone_heart():
         _flask_app.logger.info("phone_heart..."+_phone_ip)
         phone_arr=json.loads(_file.f_read(_PHONES_PATH))
         for i in range(len(phone_arr)):
-            if _phone_ip==phone_arr[i].get("ip"):
+            if phone_arr[i].get("wifi_device").find(_phone_ip+":")==0:
                 phone_arr[i]["heart_time"]=time.time()
                 _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
         return make_response("ok",200)
