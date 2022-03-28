@@ -32,7 +32,8 @@ do
     #读取长表格数据..
     sh /sdcard/lcy/loop_read_phone_data.sh $_is_init_only $_swap_file $_server_ip
   done < $_search_str_file
-  if [ $_is_init_only ];then
+  #clear init
+  if [ $_is_init_only == true ];then
     echo .................init is end.....................
     _is_init_only=false
   fi
