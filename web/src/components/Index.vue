@@ -121,7 +121,7 @@ export default {
         //init params
         if(params==null){
           params="?wifi_device="+pinfo.wifi_device+
-          "&search_button="+pinfo.search_button+"&search_str="+pinfo.inputStr
+          "&search_button="+pinfo.search_button+"&search_str="+inputStr
         }
         //start
         this.f_query_only("py/phone_start"+params,(code,msg)=>{
