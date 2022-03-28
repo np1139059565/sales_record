@@ -9,12 +9,13 @@
     <br>
     <h1 class="c_head">{{new Date(d_heart_time*1000).toJSON()}}</h1>
     <div class="c_parr c_parr_close" ref="parr1" @mouseover="f_open_parr()" @mouseout="f_close_parr()">
-      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_click_phone(p)" :title="p.search_button">
-        {{p.ip}}:{{p.port}}
+      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_click_phone(p)" :title="JSON.stringify(p)">
+        {{p.wifi_device}}
       </div>
       <div class="c_phone c_padd" @click="f_add_phone()">+</div>
     </div>
     <div v-for="(h,i) in d_monitors">
+      <p v-html="new Date(h.time*1000).toJSON().split('T')[1]" :style="{'color':i==0?'red':''}"></p>
       <p v-html="h.content" :style="{'color':i==0?'red':''}"></p>
     </div>
     <div class="c_loading" ref="loading1"></div>
@@ -30,7 +31,7 @@ export default {
       d_heart_time:1647949908.3097613,
       d_last_connect_time:1647949908.3097613,
       d_phones:[
-        // {ip:"192.168.1.157",port:5555,heart:0},
+        // {"wifi_device": "192.168.1.7:5555","local_device":"259e9dee","search_button":"900 2200","search_str":"oppo find x,2", "heart_time": 1648294339.938166}
       ],
       d_monitors:[
         //{time:"24643345.4666",content:"heat 0"}
@@ -82,40 +83,57 @@ export default {
           console.error(e.stack)
         }
     },
-    f_add_phone(e,inputStr="192.168.1.1:5555:1000 2200"){
-      inputStr = prompt("新增手机(注意,必须在同一网段内)", inputStr)
-      if(inputStr!=null){
-        const iport=inputStr.trim().split(":")
-        if(this.d_phones.filter(p=>p.ip==iport[0].trim()||p.port==iport[1].trim()).length>0){
-          alert("ip或端口重复!")
-          this.f_add_phone(e,inputStr)
-        }else{
-          this.f_query_only("/py/phone_add?ip="+iport[0].trim()+"&port="+iport[1].trim()+"&search_button="+iport[2].trim(),(code,msg)=>{
-            if(code){
-              alert("添加成功!")
-            }else{
-              alert(msg)
-              this.f_add_phone(e,inputStr)
-            }
-          })
-        }
-      }
-    },
-    f_click_phone(pinfo){
-      const inputStr=prompt("打开新扫描(搜索内容,使用\\n换行)", "")
-      if(inputStr!=null){
-        this.f_query_only("py/connect_phone?ip="+pinfo.ip+"&port="+pinfo.port,(code,msg)=>{
-          if(code){
-            this.f_query("py/phone_start?ip="+pinfo.ip+"&port="+pinfo.port+"&search_button="
-            +pinfo.search_button+"&search_str="+inputStr,(code)=>{
-              if(!code)alert("启动失败!")
-            })
+    f_add_phone(e,inputStr=",1;1000 2200;192.168.1.1:5555"){
+      //get local device
+      this.f_query_only("/py/get_adb_devices",(code,msg)=>{
+        const local_device=msg.split("\r\n")[1].split("\t")[0]
+        inputStr = prompt("新增手机(注意,必须在同一网段内)", inputStr+";"+local_device)
+        if(inputStr!=null){
+          const inputArr=inputStr.trim().split(";")
+          if(this.d_phones.filter(p=>p.wifi_device==inputArr[2].trim()
+          ||p.wifi_device.split(":")[1]==inputArr[2].trim().split(":")[1]).length>0){
+            alert("ip或端口重复!")
+            //clean local_device
+            this.f_add_phone(e,inputStr.replace(";"+inputArr[3].trim(),""))
           }else{
-            alert("手机已经失联!")
+            this.f_query_only("/py/add_phone?wifi_device="+inputArr[2].trim()+"&local_device="+inputArr[3].trim()
+            +"&search_str="+inputArr[0].trim()+"&search_button="+inputArr[1].trim(),(code,msg)=>{
+              if(code){
+                alert("添加成功!")
+              }else{
+                alert(msg)
+                this.f_add_phone(e,inputStr)
+              }
+            })
+          }
+        }
+      })
+    },
+    f_click_phone(pinfo,params,inputStr){
+      //init input str
+      var isone=false
+      if(inputStr==null){
+        isone=true
+        inputStr=prompt("打开新扫描(搜索内容,使用\\n换行)", pinfo.search_str)
+      }
+      //open scan..
+      if(inputStr!=null){
+        //init params
+        if(params==null){
+          params="?wifi_device="+pinfo.wifi_device+
+          "&search_button="+pinfo.search_button+"&search_str="+pinfo.search_str
+        }
+        //start
+        this.f_query_only("py/phone_start"+params,(code,msg)=>{
+          if(code){
+          }else if(isone&&confirm("启动失败,尝试连接数据线再试试!")){
+            //re start only
+            this.f_click_phone(pinfo,params+"&local_device="+pinfo.local_device,inputStr)
           }
         },true)
       }else if(confirm("确定要删除手机吗?")){
-        this.f_query("py/phone_delete?ip="+pinfo.ip+"&port="+pinfo.port,(code)=>alert("删除结果:"+code))
+        //delete
+        this.f_query("py/phone_delete?wifi_device="+pinfo.wifi_device,(code)=>alert("删除结果:"+code))
       }
     },
     f_open_parr(){
@@ -125,11 +143,11 @@ export default {
       this.$refs.parr1.className="c_parr c_parr_close"
     },
     f_phone_heart(){
-      this.f_query("/py/get_phones", (code, phonearr) => {
+      this.f_query("/py/get_phones", (code, phones) => {
         try{
           if(code){
             //  console.info("phone len",phonearr.length)
-            this.d_phones=phonearr.map(p=>{
+            this.d_phones=phones.map(p=>{
               //颜色标记
               p.style=("background:"+(this.d_heart_time-p.heart_time>15?"yellow":"green"))
               return p

@@ -6,7 +6,7 @@ import time
 import common.py.module_ip as _mip
 import common.py.module_file as _file
 
-import dao.phone as _phone
+import dao.adb as _adb
 
 
 from flask import Flask, request, make_response
@@ -126,6 +126,49 @@ def f_get_monitor():
         return make_response("server is err",500)
 
 
+@_flask_app.route("/get_adb_devices",methods=["GET"])
+def f_get_adb_devices():
+    try:
+        _flask_app.logger.info("get adb devices...")
+        return make_response(_adb.get_devices(),200)
+    except Exception as e:
+        logging.exception("server is err!",e)
+        return make_response("server is err!",500)
+
+
+@_flask_app.route("/add_phone",methods=["GET"])
+def f_add_phone():
+    try:
+        _flask_app.logger.info("phone_add...")
+        _wifi_device=request.args.get("wifi_device",_NULL)
+        _port=_wifi_device.split(":")[1]
+        _local_device=request.args.get("local_device",_NULL)
+        _search_button=request.args.get("search_button",_NULL)
+        _search_str=request.args.get("search_str",",1")
+        _ok=True
+        #tcpip..
+        if _local_device!=_NULL and _adb.tcpip(_local_device,_port).find("restarting in TCP mode port:")!=0:
+            _ok=False
+        _flask_app.logger.info("tcpip to "+_local_device+" "+_port+" is "+str(_ok))
+        #connect..
+        _rstr="tcpip local device is fail"
+        if _ok:
+            _rstr=_adb.connect(_wifi_device)
+            _ok=(_rstr.find("connected to")==0 or _rstr.find("already connected to")==0)
+        _flask_app.logger.info("connect to "+_wifi_device+" is "+str(_ok))
+        if _ok:
+            #add phone
+            phone_arr=json.loads(_file.f_read(_PHONES_PATH))
+            phone_arr.append({"wifi_device":_wifi_device,"heart_time":time.time(),
+            "search_button":_search_button,"search_str":_search_str})
+            _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
+
+        return make_response(_rstr,200 if _ok else 500)
+    except Exception as e:
+        logging.exception("server is err!",e)
+        return make_response("server is err!",500)
+
+
 @_flask_app.route("/get_phones",methods=["GET"])
 def f_get_phones():
     try:
@@ -135,59 +178,18 @@ def f_get_phones():
         return make_response("server is err!",500)
 
 
-@_flask_app.route("/phone_add",methods=["GET"])
-def f_phone_add():
-    try:
-        _flask_app.logger.info("phone_add...")
-        _ip=request.args.get("ip",_NULL)
-        _port=request.args.get("port",_NULL)
-        _search_button=request.args.get("search_button",_NULL)
-        #check phone
-        _rstr=_phone.connect(_ip,_port)
-        _connect_ok=(_rstr.find("connected to")==0 or _rstr.find("already connected to")==0)
-        if _connect_ok:
-            #add phone
-            phone_arr=json.loads(_file.f_read(_PHONES_PATH))
-            phone_arr.append({"ip":_ip,"port":_port,"heart_time":time.time(),"search_button":_search_button})
-            _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
-
-        return make_response(_rstr,200 if _connect_ok else 500)
-    except Exception as e:
-        logging.exception("server is err!",e)
-        return make_response("server is err!",500)
-
-
 @_flask_app.route("/phone_delete",methods=["GET"])
 def f_phone_delete():
     try:
         _flask_app.logger.info("phone_delete...")
-        _ip=request.args.get("ip",_NULL)
-        _port=request.args.get("port",_NULL)
+        _wifi_device=request.args.get("wifi_device",_NULL)
         phone_arr=json.loads(_file.f_read(_PHONES_PATH))
         for i in range(len(phone_arr)):
-            if _ip==phone_arr[i].get("ip"):
+            if _wifi_device==phone_arr[i].get("wifi_device"):
                 phone_arr.pop(i)
                 _file.f_write(_PHONES_PATH,json.dumps(phone_arr))
                 return make_response("ok",200)
-        return make_response("not find ip",500)
-        
-    except Exception as e:
-        logging.exception("server is err!",e)
-        return make_response("server is err!",500)
-
-
-@_flask_app.route("/connect_phone",methods=["GET"])
-def f_connect_phone():
-    try:
-        _flask_app.logger.info("connect_phone...")
-        _ip=request.args.get("ip",_NULL)
-        _port=request.args.get("port",_NULL)
-
-        _rstr=_phone.connect(_ip,_port)
-        if _rstr.find("already connected to")==0 or _rstr.find("connected to")==0:
-            return make_response(_rstr,200)
-        else:
-            return make_response(_rstr,500)
+        return make_response("not find device",500)
     except Exception as e:
         logging.exception("server is err!",e)
         return make_response("server is err!",500)
@@ -196,14 +198,28 @@ def f_connect_phone():
 @_flask_app.route("/phone_start",methods=["GET"])
 def f_phone_start():
     try:
-        _flask_app.logger.info("phone_show_command...")
-        _ip=request.args.get("ip",_NULL)
-        _port=request.args.get("port",_NULL)
+        _flask_app.logger.info("phone start...")
+        _wifi_device=request.args.get("wifi_device",_NULL)
+        _local_device=request.args.get("local_device",_NULL)
         _search_button=request.args.get("search_button","")
         _search_str=request.args.get("search_str",",1")
-        os.system("start server\cmd\start_phone.bat "+_ip+" "+_port+" "+_mip.f_get_local_ip()
-        +" \""+_search_button+"\""+" \""+_search_str+"\"")
-        return make_response("ok",200)
+        _ok=True
+        #re open tcpip
+        if _local_device!=_NULL:
+            _port=_wifi_device.split(":")[1]
+            _ok=(_adb.tcpip(_local_device,_port).find("restarting in TCP mode port:")!=0)
+            _flask_app.logger.info("tcpip to "+_local_device+" "+_port+" is "+str(_ok))
+        #connect..
+        _rstr="tcpip local device is fail"
+        if _ok:
+            _rstr=_adb.connect(_wifi_device)
+            _ok=(_rstr.find("connected to")==0 or _rstr.find("already connected to")==0)
+        _flask_app.logger.info("connect to "+_wifi_device+" is "+str(_ok))
+        #start..
+        if _ok:
+            os.system("start server\cmd\start_phone.bat "+_wifi_device+" "+_mip.f_get_local_ip()
+            +" \""+_search_button+"\""+" \""+_search_str+"\"")
+        return make_response(_rstr,200 if _ok else 500)
     except Exception as e:
         logging.exception("server is err!",e)
         return make_response("server is err!",500)
