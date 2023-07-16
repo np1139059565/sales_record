@@ -15,7 +15,7 @@ _heart_last_time=$(date '+%s')
 f_read_phone_data(){
   rm -rf $_phone_new_line_file
   #将多行数据合并整理
-  sh $_ui_sh_file
+  curl -o dump.xml "http://192.168.1.37:8000/get_ui_by_uiautomator2/dump?device=78590ad7"
   cat $_ui_swap_file|tr "\n[" "/>"|
   sed 's/tv_product_level/\ntv_product_level/g'|
   grep -E 'tv_product_level.*tv_sku_name.*tv_price.*tv_product_number'|

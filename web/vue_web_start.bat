@@ -1,4 +1,4 @@
 title vue web
 
 cd web\
-npm run dev
+npm run serve

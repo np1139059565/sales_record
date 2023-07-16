@@ -1,3 +1,5 @@
 server/common/
 server/db/
 node_modules/
+*.pyc
+.vscode/

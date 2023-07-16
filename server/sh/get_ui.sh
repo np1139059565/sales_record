@@ -1,3 +1,5 @@
+#!/bin/bash
+
 echo $0 "$1"...
 
 _wres=0
@@ -7,13 +9,15 @@ _swap_file="/sdcard/lcy/data/ui.swap"
 
 _start_time=$(date '+%s')
 #读取页面内容..
-while [ $_wres -eq $_werr ]
-do
-  sleep 1
-  echo "">$_ui_file
-  _msg=$(uiautomator dump $_ui_file)
-  _wres=$(echo $_msg|grep "UI hierchary dumped to:"|wc -l)
-done
+# while [ $_wres -eq $_werr ]
+# do
+#   sleep 1
+#   echo "">$_ui_file
+#   _msg=$(uiautomator dump $_ui_file)
+#   _wres=$(echo $_msg|grep "UI hierchary dumped to:"|wc -l)
+# done
+device=$(getprop ro.serialno)
+/system/bin/curl -o $_ui_file "http://192.168.1.37:8000/get_ui_by_uiautomator2/dump?device=$device"
 
 #过滤页面内容(_grep_str:tv_product_type_name|tv_name|tv_product_level|tv_sku_name|tv_price|tv_product_number)
 _grep_str=$1

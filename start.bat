@@ -1,6 +1,6 @@
-title flask server
+title thread http server
 
 start web\vue_web_start.bat
 
-python server/flask_server.py
+python server/thread_http_server.py
 pause

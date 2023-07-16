@@ -1,376 +1,397 @@
-<template>
-  <div class="c_t_conter">
-    <audio ref="audio1" controls="controls" class="c_audio">
-      <source src="/static/audio/11981.mp3" type="audio/mpeg" />
-    </audio>
-    <div class="c_tools">
-      <input type="button" value="table" @click="f_open_page('Table')" class="c_table_button">
-    </div>
-    <br>
-    <h1 class="c_head">{{new Date(d_heart_time*1000).toJSON()}}</h1>
-    <div class="c_parr c_parr_close" ref="parr1" @mouseover="f_open_parr()" @mouseout="f_close_parr()">
-      <div v-for="p in d_phones" class="c_phone" :style="p.style" @click="f_click_phone(p)" :title="JSON.stringify(p)">
-        {{p.wifi_device}}
-      </div>
-      <div class="c_phone c_padd" @click="f_add_phone()">+</div>
-    </div>
-    <div v-for="(h,i) in d_monitors">
-      <p v-html="new Date(h.time*1000).toJSON().split('T')[1]" :style="{'color':i==0?'red':''}"></p>
-      <p v-html="h.content" :style="{'color':i==0?'red':''}"></p>
-    </div>
-    <div class="c_loading" ref="loading1"></div>
-  </div>
-</template>
-
+<template src="../html/index.html"></template>
 <script>
 export default {
-  name: 'Trend',
-  data() {
-    return {
-      d_heart_id:-1,
-      d_heart_time:1647949908.3097613,
-      d_last_connect_time:1647949908.3097613,
-      d_phones:[
-        // {"wifi_device": "192.168.1.7:5555","local_device":"259e9dee","search_button":"900 2200","search_str":"oppo find x,2", "heart_time": 1648294339.938166}
-      ],
-      d_monitors:[
-        //{time:"24643345.4666",content:"heat 0"}
-      ],
-    }
-  },
-  mounted() {
-    this.f_init_base64()
-    //stop heart
-    if(this.d_heart_id>=0){
-      clearInterval(this.d_heart_id)
-      this.d_heart_id=-1
-      console.info("stop heart")
-    }
-    //start new heart
-    this.d_heart_id=setInterval(()=>{
-      //time heart
-      this.f_query("/py/get_time",(code,str)=>this.d_heart_time=str)
-      //monitor heart
-      this.f_monitor_heart()
-      //phone heart
-      if(this.$refs.parr1.classList.contains("c_parr_close")){
-        this.f_phone_heart()
-      }
-    },2000)
-  },
-  methods: {
-    f_open_page(component) {
-      console.info("open component...", component)
-      //stop heart
-      if(this.d_heart_id>=0){
-        clearInterval(this.d_heart_id)
-        this.d_heart_id=-1
-        console.info("stop heart")
-      }
-      //to page...
-      this.$router.push({
-        name: component,
-        params: {month:this.this_month}
-      })
+    data() {
+        return {
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+            modalStartX: 0,
+            modalStartY: 0,
+            modalTop: 0,
+            modalLeft: 0,
+            // 已保存的手机信息[{device,label,hand_nodes}]
+            d_phones: [],
+            // 在线的驱动列表[{label,value}]
+            d_devices: [],
+            // 已选驱动信息
+            d_selected_device: { label: '', value: '' },
+            // 操作列表
+            d_hand_nodes: [],
+            // 默认操作列表
+            d_def_hand_nodes: [
+                { label: '搜索按钮', type: 'search_open', hand_type: 'click', class: '', bounds: '', 'resource-id': '' },
+                { label: '搜索输入', type: 'search_input', hand_type: 'input', class: '', value: '', 'resource-id': '' },
+                { label: '搜索确认', type: 'search_ok', hand_type: 'click', class: '', bounds: '', 'resource-id': '' },
+                { label: '查找', type: 'check', hand_type: 'check', class: '', 'resource-id': '', text: '' },
+                { label: '滑动', type: 'slice', hand_type: 'slice', bounds: '', speed: 0.2 }
+            ],
+            // 当前页面信息
+            d_dump_nodes: [],
+            // 默认滑动速度
+            d_def_speeds: [0.2, 0.4, 0.8],
+            d_dialog_title: '',
+            d_is_show_start_button: false,
+            d_pobj_arr: [],
+            d_is_auto_refush_pobj: false,
+            d_pobj_refush_id: -1,
+            d_pobj_bottom_page: -1
+        };
     },
-    f_play_tts(){
-        //百度
-        try{
-          //var url = "https://fanyi.baidu.com/gettts?lan=zh&text="+encodeURI(str)+"&spd=5&source=web"
-          //this.d_audio = "/static/audio/11981.mp3"
-          this.$refs.audio1.play()
-        }catch(e){
-          console.error(e.stack)
-        }
-    },
-    f_add_phone(e,inputStr=",1;1000 2200;192.168.1.1:5555"){
-      //get local device
-      this.f_query_only("/py/get_adb_devices",(code,msg)=>{
-        const local_device=msg.split("\r\n")[1].split("\t")[0]
-        inputStr = prompt("新增手机(连接wifi>打开开发者模式>打开USB调试>插入电脑(只能插一台手机))>修改搜索坐标>修改ip和端口(不能重复)", inputStr+";"+local_device)
-        if(inputStr!=null){
-          const inputArr=inputStr.trim().split(";")
-          if(this.d_phones.filter(p=>p.wifi_device==inputArr[2].trim()
-          ||p.wifi_device.split(":")[1]==inputArr[2].trim().split(":")[1]).length>0){
-            alert("ip或端口重复!")
-            //clean local_device
-            this.f_add_phone(e,inputStr.replace(";"+inputArr[3].trim(),""))
-          }else{
-            this.f_query_only("/py/add_phone?wifi_device="+inputArr[2].trim()+"&local_device="+inputArr[3].trim()
-            +"&search_str="+inputArr[0].trim()+"&search_button="+inputArr[1].trim(),(code,msg)=>{
-              if(code){
-                alert("添加成功!")
-              }else{
-                alert(msg)
-                this.f_add_phone(e,inputStr)
-              }
-            })
-          }
-        }
-      })
-    },
-    f_click_phone(pinfo,params,inputStr){
-      //init input str
-      var isone=false
-      if(inputStr==null){
-        isone=true
-        inputStr=prompt("打开新扫描(使用~连接数字(1代表全部,写了1就不能再写其他的数字了);搜索多种机型时,使用\\n换行)", pinfo.search_str)
-      }
-      //open scan..
-      if(inputStr!=null){
-        //init params
-        if(params==null){
-          params="?wifi_device="+pinfo.wifi_device+
-          "&search_button="+pinfo.search_button+"&search_str="+inputStr
-        }
-        //start
-        this.f_query_only("py/phone_start"+params,(code,msg)=>{
-          if(code){
-          }else if(isone&&confirm("启动失败,尝试连接数据线再试试!")){
-            //re start only
-            this.f_click_phone(pinfo,params+"&local_device="+pinfo.local_device,inputStr)
-          }
-        },true)
-      }else if(confirm("确定要删除手机吗?")){
-        //delete
-        this.f_query("py/phone_delete?wifi_device="+pinfo.wifi_device,(code)=>alert("删除结果:"+code))
-      }
-    },
-    f_open_parr(){
-      this.$refs.parr1.className="c_parr"
-    },
-    f_close_parr(){
-      this.$refs.parr1.className="c_parr c_parr_close"
-    },
-    f_phone_heart(){
-      this.f_query("/py/get_phones", (code, phones) => {
-        try{
-          if(code){
-            //  console.info("phone len",phonearr.length)
-            this.d_phones=phones.map(p=>{
-              //颜色标记
-              p.style=("background:"+(this.d_heart_time-p.heart_time>15?"yellow":"green"))
-              return p
-            })
-          }
-        }catch(e){
-          console.error(e)
-        }
-      })
-    },
-    f_init_base64(){
-      window.Base64= {
-        _keyStr: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
-        encode: function (e) {
-          var t = "";
-          var n, r, i, s, o, u, a;
-          var f = 0;
-          e = Base64._utf8_encode(e);
-          while (f < e.length) {
-            n = e.charCodeAt(f++);
-            r = e.charCodeAt(f++);
-            i = e.charCodeAt(f++);
-            s = n >> 2;
-            o = (n & 3) << 4 | r >> 4;
-            u = (r & 15) << 2 | i >> 6;
-            a = i & 63;
-            if (isNaN(r)) {
-              u = a = 64
-            } else if (isNaN(i)) {
-              a = 64
+    mounted() {
+        // refush devices
+        this.f_refush_phones();
+        // auto refush pobj
+        this.d_pobj_refush_id = setInterval(() => {
+            this.f_refush_pobj('last', (code, conter) => {
+                if (code) {
+                    if (this.d_pobj_bottom_page < 0) {
+                        this.d_pobj_bottom_page = conter.index;
+                    }
+                    const new_pobj_arr = JSON.parse(conter.conter)
+                        .filter(p => this.d_pobj_arr.length == 0 || p.time > this.d_pobj_arr[0].time)
+                        .sort((p1, p2) => p2.time - p1.time);
+                    if (new_pobj_arr.length > 0) {
+                        //var url = "https://fanyi.baidu.com/gettts?lan=zh&text="+encodeURI(str)+"&spd=5&source=web"
+                        //this.d_audio = "/static/audio/11981.mp3"
+                        this.$refs.audio1.play();
+                        this.d_pobj_arr = new_pobj_arr.concat(this.d_pobj_arr);
+                    }
+                }
+            });
+        }, 1000);
+        // 监听滚动事件
+        window.addEventListener('scroll', () => {
+            // 获取滚动条的位置
+            const scrollHeight = document.documentElement.scrollHeight;
+            const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+            const clientHeight = document.documentElement.clientHeight;
+            console.info(scrollHeight, scrollTop, clientHeight)
+            // 判断滚动条是否滚动到了页面底部
+            if (scrollTop + clientHeight + 5 >= scrollHeight) {
+                // 执行数据刷新操作
+                this.f_pobj_next()
             }
-            t = t + this._keyStr.charAt(s) + this._keyStr.charAt(o) + this._keyStr.charAt(u) + this._keyStr.charAt(a)
-          }
-          return t
+        });
+    },
+    methods: {
+        f_start_by_wifi() {
+            this.f_query_only('/py/flask_server/f_start_by_wifi',
+                (code, msg) => {
+                    // 将字符串转换为十六进制字符串
+                    const hand_nodes_str = JSON.stringify(this.d_hand_nodes);
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(hand_nodes_str);
+                    const hex_str = Array.from(data, byte => byte.toString(16).padStart(2, '0')).join('');
+                    const hex_str_with_dashes = hex_str.match(/.{1,2}/g).join('-');
+
+                    const script_str = msg + 'main(server_ip="192.168.1.37",input_value_length='
+                        + this.d_hand_nodes.filter(t => t['type'] == 'search_input')[0].value.split('@').length
+                        + ',atx_ip="127.0.0.1' //+ this.d_selected_device.value.trim().split(':')[0].trim()
+                        + '",encode_str="' + hex_str_with_dashes + '")';
+
+
+                    // 创建一个临时的textarea元素
+                    const textarea = document.createElement('textarea');
+                    // 设置要复制的文本内容
+                    textarea.value = script_str;
+                    // 将textarea元素添加到页面中
+                    document.body.appendChild(textarea);
+                    // 选择textarea中的文本
+                    textarea.select();
+                    // 执行复制操作
+                    document.execCommand('copy');
+                    // 移除临时的textarea元素
+                    document.body.removeChild(textarea);
+                    alert('已经将脚本发送到你的剪切板中,请直接在qpython中新建文件启动即可！');
+                });
         },
-        decode: function (e) {
-          var t = "";
-          var n, r, i;
-          var s, o, u, a;
-          var f = 0;
-          e = e.replace(/[^A-Za-z0-9+/=]/g, "");
-          while (f < e.length) {
-            s = this._keyStr.indexOf(e.charAt(f++));
-            o = this._keyStr.indexOf(e.charAt(f++));
-            u = this._keyStr.indexOf(e.charAt(f++));
-            a = this._keyStr.indexOf(e.charAt(f++));
-            n = s << 2 | o >> 4;
-            r = (o & 15) << 4 | u >> 2;
-            i = (u & 3) << 6 | a;
-            t = t + String.fromCharCode(n);
-            if (u != 64) {
-              t = t + String.fromCharCode(r)
+        f_pobj_next() {
+            if (this.d_pobj_bottom_page > 0) {
+                this.f_refush_pobj(this.d_pobj_bottom_page -= 1, (code, conter) => {
+                    if (code) {
+                        this.d_pobj_arr.push(...JSON.parse(conter.conter));
+                    }
+                });
             }
-            if (a != 64) {
-              t = t + String.fromCharCode(i)
+        },
+        f_timestamp_to_str(timestamp) {
+            // 获取当前时间戳
+            // var timestamp = 1688581598.2155583;
+
+            // 创建一个Date对象
+            var date = new Date(timestamp * 1000);
+
+            // 获取年、月、日、时、分、秒
+            var year = date.getFullYear();
+            var month = ('0' + (date.getMonth() + 1)).slice(-2);
+            var day = ('0' + date.getDate()).slice(-2);
+            var hours = ('0' + date.getHours()).slice(-2);
+            var minutes = ('0' + date.getMinutes()).slice(-2);
+            var seconds = ('0' + date.getSeconds()).slice(-2);
+
+            // 格式化为年月日时分秒
+            return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+        },
+        f_pstrhex_to_str(pstrhex) {
+            let byteArray = [];
+            for (let i = 0; i < pstrhex.length; i += 2) {
+                const byte = parseInt(pstrhex.substr(i, 2), 16);
+                byteArray.push(byte);
             }
-          }
-          t = Base64._utf8_decode(t);
-          return t
-        }, _utf8_encode: function (e) {
-          e = e.replace(/rn/g, "n");
-          var t = "";
-          for (var n = 0; n < e.length; n++) {
-            var r = e.charCodeAt(n);
-            if (r < 128) {
-              t += String.fromCharCode(r)
-            } else if (r > 127 && r < 2048) {
-              t += String.fromCharCode(r >> 6 | 192);
-              t += String.fromCharCode(r & 63 | 128)
+
+            const decodedString = new TextDecoder('utf-8').decode(Uint8Array.from(byteArray));
+            return decodedString;
+        },
+        getComponentType(i,timestamp) {
+            var hindex=i+1;
+            if(this.d_pobj_arr.length>i+1&&this.d_pobj_arr[0].time-timestamp<30){
+                hindex=1;
+            }
+            return hindex >= 0 && hindex < 3 ? 'h' + hindex: 'h5';
+        },
+
+        f_refush_pobj(i, callback) {
+            if (this.d_is_auto_refush_pobj || i >= 0) {
+                this.f_query('/py/flask_server/get_pstr?page=' + (i >= 0 ? i : 'last'),
+                    (code, msg) => {
+                        if (typeof (callback) == 'function') {
+                            callback(code, msg)
+                        }
+                    });
+            }
+        },
+        f_del_device(p) {
+            // 弹出确认框
+            const rbool = confirm("你确定要执行此操作吗？");
+            if (rbool) {
+                this.f_query_only('/py/flask_server/f_phone_delete?device=' + p.device,
+                    (code, msg) => {
+                        alert(msg)
+                        this.f_refush_phones()
+                    });
+            }
+        },
+        f_start_phone() {
+            const nodes = this.d_hand_nodes;
+            console.info('start phone', this.d_hand_nodes);
+            this.f_query_only('/py/flask_server/f_phone_start?device=' + this.d_selected_device.value
+                + '&hand_nodes=' + JSON.stringify(nodes) + '&ivlen=' + nodes.filter(t => t['type'] == 'search_input')[0].value.split('@').length,
+                (code, msg) => {
+                    alert(code + ':' + msg)
+                });
+        },
+        f_test_hand_node(i) {
+            const tdata = this.d_hand_nodes[i];
+            console.info('test hand node', this.d_hand_nodes[i]);
+            this.f_query_only('/py/get_ui_by_uiautomator2/' + tdata['hand_type'] + '?device=' + this.d_selected_device.value
+                + '&node_info=' + JSON.stringify(tdata),
+                (code, msg) => {
+                    alert(code + ':' + msg)
+                });
+        },
+        f_save_phone() {
+            this.f_query_only('/py/flask_server/f_save_phone?phone_info=' + JSON.stringify({
+                label: this.d_selected_device.label,
+                hand_nodes: this.d_hand_nodes,
+                device: this.d_selected_device.value
+            }),
+                (code, msg) => {
+                    alert(msg)
+                    if (msg == 'success') {
+                        this.f_refush_phones(() => {
+                            this.f_refush_devices(null, true);
+                        });
+                    }
+                });
+        },
+        f_change_node1(e) {
+            console.info('f_change_node1', e.target.getAttribute('selected_node_index'), e.target.value);
+            this.d_hand_nodes[e.target.getAttribute('selected_node_index')] = JSON.parse(e.target.value);
+        },
+        f_change_node2(e) {
+            console.info('f_change_node2', e.target.getAttribute('selected_node_index'), e.target.selectedIndex);
+            const keys = Object.keys(this.d_hand_nodes[e.target.getAttribute('selected_node_index')]);
+            keys.map(k => {
+                if (this.d_dump_nodes[e.target.selectedIndex][k] != null)
+                    this.d_hand_nodes[e.target.getAttribute('selected_node_index')][k] = this.d_dump_nodes[e.target.selectedIndex][k];
+            });
+        },
+        f_get_all_last_node(e, nodearr) {
+            if (e.children.length == 0) {
+                if (nodearr == null) {
+                    nodearr = [];
+                } else {
+                    nodearr.push(e);
+                }
             } else {
-              t += String.fromCharCode(r >> 12 | 224);
-              t += String.fromCharCode(r >> 6 & 63 | 128);
-              t += String.fromCharCode(r & 63 | 128)
+                for (var i = 0; i < e.children.length; i++) {
+                    nodearr = this.f_get_all_last_node(e.children[i], nodearr);
+                }
             }
-          }
-          return t
-        }, _utf8_decode: function (e) {
-          var t = "";
-          var n = 0;
-          var r =0;
-          var c1 =0;
-          var c2 = 0;
-          while (n < e.length) {
-            r = e.charCodeAt(n);
-            if (r < 128) {
-              t += String.fromCharCode(r);
-              n++
-            } else if (r > 191 && r < 224) {
-              c2 = e.charCodeAt(n + 1);
-              t += String.fromCharCode((r & 31) << 6 | c2 & 63);
-              n += 2
-            } else {
-              c2 = e.charCodeAt(n + 1);
-              var c3 = e.charCodeAt(n + 2);
-              t += String.fromCharCode((r & 15) << 12 | (c2 & 63) << 6 | c3 & 63);
-              n += 3
+            return nodearr;
+        },
+        f_refush_dump_nodes(callback) {
+            //refush dump nodes
+            this.f_query_only("/py/get_ui_by_uiautomator2/dump?device=" + this.d_selected_device.value, (code, msg) => {
+                if (code) {
+                    this.d_dump_nodes = [];
+                    var parser = new DOMParser();
+                    var xmlDoc = parser.parseFromString(msg, "text/xml");
+                    var nodes = this.f_get_all_last_node(xmlDoc);
+
+                    for (var i = 0; i < nodes.length; i++) {
+                        var text = nodes[i].getAttribute("text");
+                        if (text.trim().length == 0) {
+                            text = nodes[i].getAttribute("content-desc");
+                        }
+                        const node = {};
+                        const attrs = nodes[i].attributes;
+                        for (var j = 0; j < attrs.length; j++) {
+                            node[attrs[j].name] = attrs[j].value;
+                        }
+                        this.d_dump_nodes.push(node);
+                    }
+
+                } else {
+                    alert(msg)
+                }
+                if (typeof (callback) == 'function') {
+                    callback(code)
+                }
+            });
+        },
+        f_refush_phones(callback) {
+            this.f_refush_devices(() => {
+                this.f_query("/py/flask_server/f_get_phones", (code, phones) => {
+                    try {
+                        if (code) {
+                            console.info("get phones", phones)
+                            this.d_phones = phones
+                                .map(p => {
+                                    //颜色标记
+                                    p.style = ("cursor:pointer;margin-right:5px;border:0;background-color:" + (this.d_devices.filter(d => p.device == d.value).length == 0 ? "yellow" : "green"));
+                                    return p;
+                                });
+                        }
+                        if (callback != null) {
+                            callback(code);
+                        }
+                    } catch (e) {
+                        console.error(e)
+                    }
+                });
+            });
+        },
+        f_refush_devices(callback, isFindLabel = false) {
+            this.f_query_only("/py/adb/devices", (code, msg) => {
+                if (code) {
+                    this.d_devices = msg.split("\r\n").filter((v, i) => i > 0)
+                        .map(line => line.split("\t")[0].split(":")[0])
+                        .map(d => {
+                            return {
+                                value: d,
+                                label: isFindLabel ? this.d_phones.filter(p => p.device == d).map(p => p.label).concat(d)[0] : d
+                            }
+                        });
+                } else {
+                    alert(msg);
+                }
+                if (callback != null) {
+                    callback(code);
+                }
+            });
+        },
+        f_close_dialog() {
+            this.$refs.dialog.style.display = 'none';
+        },
+        f_show_dialog(device, title = '添加手机', isShowStartButton = false) {
+            this.d_dialog_title = title;
+            this.d_is_show_start_button = isShowStartButton;
+            this.$refs.dialog.style.display = 'block';
+            // refush devices
+            this.f_refush_devices(() => {
+                if (typeof device == 'object' && device.value != null) {
+                    this.d_selected_device = device;
+                } else {
+                    this.d_selected_device = this.d_devices[0];
+                }
+                // refush dump nodes
+                this.f_refush_dump_nodes(() => {
+                    // refush hand nodes by selected device
+                    this.d_hand_nodes = [];
+                    // is saved device
+                    this.d_phones.map(p => {
+                        if (p.device == this.d_selected_device.value) {
+                            this.d_hand_nodes = p.hand_nodes;
+                        }
+                    });
+
+                    // is new device
+                    if (this.d_hand_nodes.length == 0) {
+                        this.d_hand_nodes = this.d_def_hand_nodes.map(n => {
+                            Object.keys(n).map(k => {
+                                if (this.d_dump_nodes[0][k] != null)
+                                    n[k] = this.d_dump_nodes[0][k];
+                            });
+                            return n;
+                        });
+                    }
+                });
+            }, true);
+        },
+        f_query_only(url, callback, params = {}) {
+            this.f_query(url, callback, params, "get", true)
+        },
+        f_query(url, callback, params = {}, qtype = "get", showLoading = false) {
+            if (showLoading) {
+                this.$refs.loading1.style.display = "block"
             }
-          }
-          return t
-        }
-      }
-    },
-    f_monitor_heart(){
-      this.f_query("/py/get_monitor_last_times"+(this.d_monitors.length>0?"?last_heart_time="+this.d_monitors[0].time:""), (code, times) => {
-        try{
-          if(code){
-            //  console.info("monitor len",times.length)
-            if(this.d_monitors.length==0||times.length>0&&times[times.length-1]!=this.d_monitors[0].time){
-              this.f_play_tts()
-              times.map(time=>this.f_query("/py/get_monitor_info?time="+time,(code,content)=>{
-                this.d_monitors.splice(0,0,{
-                  time:time,
-                  content:Base64.decode(content).replace(/\$/g,"<br>")
+            qtype = qtype.toLowerCase()
+            if (qtype == "get") {
+                params = { params: params }
+            }
+            const axios = require("axios")
+            axios[qtype](url, params).then(resp => {
+                if (showLoading) {
+                    this.$refs.loading1.style.display = ""
+                }
+                callback(resp.status == 200, resp.data)
+            })
+                .catch(e => {
+                    if (showLoading) {
+                        this.$refs.loading1.style.display = ""
+                    }
+                    if (e && e.response && e.response.status == 500) {
+                        callback(false, e.response.data)
+                    } else console.error(e)
                 })
-              }))
+        },
+        startDrag(event) {
+            this.isDragging = true;
+            this.dragStartX = event.clientX;
+            this.dragStartY = event.clientY;
+            this.modalStartX = this.modalLeft;
+            this.modalStartY = this.modalTop;
+
+            document.addEventListener("mousemove", this.handleDrag);
+            document.addEventListener("mouseup", this.stopDrag);
+        },
+        handleDrag(event) {
+            if (this.isDragging) {
+                const offsetX = event.clientX - this.dragStartX;
+                const offsetY = event.clientY - this.dragStartY;
+                this.modalLeft = this.modalStartX + offsetX;
+                this.modalTop = this.modalStartY + offsetY;
             }
-          }else{
-            console.error("get monitor is fail...")
-            this.d_monitor_style="color:red"
-          }
-        }catch(e){
-          console.error(e)
+        },
+        stopDrag() {
+            this.isDragging = false;
+            document.removeEventListener("mousemove", this.handleDrag);
+            document.removeEventListener("mouseup", this.stopDrag);
         }
-      })
-    },
-    f_query_only(url,callback,params={}){
-      this.f_query(url,callback,params,"get",true)
-    },
-    f_query(url, callback, params = {}, qtype = "get",showLoading=false) {
-      if(showLoading){
-        this.$refs.loading1.style.display="block"
-      }
-      qtype = qtype.toLowerCase()
-      if (qtype == "get") {
-        params = {params: params}
-      }
-      const axios = require("axios")
-      axios[qtype](url, params).then(resp => {
-        if(showLoading){
-          this.$refs.loading1.style.display=""
-        }
-        callback(resp.status == 200, resp.data)
-      })
-      .catch(e => {
-        if(showLoading){
-          this.$refs.loading1.style.display=""
-        }
-        if(e.response.status==500){
-          callback(false,e.response.data)
-        }else console.error(e)
-      })
     }
-  }
-}
+};
 </script>
-
-<style>
-html,body,div,h1{
-  padding:0;
-  margin:0;
-}
-
-.c_t_conter {
-  width: 100%;
-  height: 100%;
-}
-.c_parr,.c_tools {
-    width: fit-content;
-    display: inline-flex;
-    margin-bottom:10px;
-}
-
-.c_audio,.c_table_button,.c_add_button{
-  height: 40px;
-  border-radius: 5px;
-  margin-left:5px;
-}
-.c_audio{
-  width:100%;
-  padding:0;
-  margin:0;
-}
-.c_parr{
-    max-width: 80%;
-    min-width:30px;
-    min-height:30px;
-    border:1px solid #CCC;
-    cursor: pointer;
-    display: inline-block;
-}
-.c_phone{
-  height:20px;
-  margin:5px;
-  border-radius: 5px;
-  overflow: hidden;
-  float: left;
-  border: 1px solid;
-  border-color: #ccc;
-}
-.c_phone:hover{
-  border-color: #555;
-}
-.c_parr_close .c_phone{
-  width:20px;
-  color: rgba(255,255,255,0);
-}
-.c_padd{
-  width:20px;
-}
-.c_parr_close .c_padd{
-  display: none;
-}
-.c_add_button {
-  width: 40px;
-}
-.c_loading{
-  width:100%;
-  height:100%;
-  position: absolute;
-  top:0;
-  left:0;
-  cursor: progress;
-  background: rgba(255,255,255,0.5);
-  display: none;
-}
-</style>
+<style src="../css/index.css"></style>

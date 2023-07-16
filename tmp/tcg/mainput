@@ -1,0 +1,8 @@
+base=/data/local/tmp/tcg
+export CLASSPATH=$base/mainput.jar
+trap "" HUP
+for a in "$@"; do
+    echo "  bash arg:" $a
+done
+exec app_process $base com.sigma_rt.mainput.event.MAInput "$@"
+

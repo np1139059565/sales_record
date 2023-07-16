@@ -1,0 +1,84 @@
+<div class="c_t_conter">
+    <!-- 声音 -->
+    <audio ref="audio1" controls="controls" class="c_audio">
+        <source src="/static/audio/11981.mp3" type="audio/mpeg" />
+    </audio>
+    <!-- 设备列表 -->
+    <div>
+        <input v-for="p in d_phones" :value="p.label" type="button" :style="p.style"
+            @click="f_show_dialog({label:p.label,value:p.device},'启动脚本',true)" @contextmenu="f_del_device(p)"
+            :title="p.device">
+        <input value="+" type="button" @click="f_show_dialog">
+        <input type="checkbox" v-model="d_is_auto_refush_pobj" title="是否刷新">
+    </div>
+    <div class="c_pstr_conter">
+        <component v-for="(pobj,i) in d_pobj_arr" :is="getComponentType(i,pobj.time)">
+            <!-- f_timestamp_to_str(pobj.time)+' '+Object.values(pobj).join(',') -->
+            <!-- {{ f_pstrhex_to_str(pobj.pstrhex)+' '+f_timestamp_to_str(pobj.time)+' '+pobj.device }} -->
+            {{ f_pstrhex_to_str(pobj.pstrhex) }}
+        </component>
+    </div>
+    <input value="next" type="button" @click="f_pobj_next">
+    <!-- 弹框 -->
+    <div class="modal" ref="dialog" :style="{ top: modalTop + 'px', left: modalLeft + 'px' }" @mousedown="startDrag">
+        <div class="modal-header">
+            <h5>{{d_dialog_title}}</h5>
+            <button class="close-button" @click="f_close_dialog">关闭</button>
+        </div>
+        <div class="modal-content">
+            <select v-model="d_selected_device.value" v-show="!d_is_show_start_button">
+                <option v-for="item in d_devices" :value="item.value">{{item.label+':'+item.value}}</option>
+            </select>
+            <input v-model="d_selected_device.label" :disabled="d_is_show_start_button"
+                :title="d_selected_device.value">
+            <table>
+                <thead>
+                    <tr>
+                        <th>概览</th>
+                        <th>修改</th>
+                        <th>测试</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item,i) in d_hand_nodes">
+                        <td class="c_position_relative">
+                            <input class="dropdown" @change="f_change_node1" :selected_node_index="i"
+                                :value="JSON.stringify(item)" :title="JSON.stringify(item)">
+                            <select class="dropdown c_nodes" @change="f_change_node2" :selected_node_index="i">
+                                <option v-for="n in d_dump_nodes" :value="item" :title="JSON.stringify(n)">
+                                    {{JSON.stringify(n)}}</option>
+                            </select>
+                        </td>
+                        <td>
+                            <template v-for="k in Object.keys(item)">
+                                <template v-if="k=='speed'">
+                                    <span>{{k}}:</span>
+                                    <select v-model="item[k]">
+                                        <option v-for="s in d_def_speeds" :value="s">{{s}}</option>
+                                    </select>
+                                </template>
+                              
+                                <template v-if="['bounds','value'].indexOf(k)>=0" title="若为空则根据左边选中的节点信息来动态计算,所以必须存在一个">
+                                    <span>{{k}}:</span>
+                                    <input v-model="item[k]">
+                                </template>
+                            </template>
+                        </td>
+                        <td>
+                            <button class="test-button" @click="f_test_hand_node(i)">测试</button>
+                        </td>
+                    </tr>
+                    <!-- 可以根据需要添加更多的行 -->
+                </tbody>
+            </table>
+            <div class="button-container">
+                <button class="c_save-button" @click="f_refush_dump_nodes">刷新</button>
+                <button class="c_save-button" @click="f_save_phone">保存</button>
+                <button class="c_start-button" @click="f_start_phone" v-show="d_is_show_start_button">启动</button>
+                <button class="c_start-button" @click="f_start_by_wifi" v-show="d_is_show_start_button">无线启动</button>
+            </div>
+        </div>
+    </div>
+    <!-- 加载中.. -->
+    <div class="c_loading" ref="loading1"></div>
+</div>
